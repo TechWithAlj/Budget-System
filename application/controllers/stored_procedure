@@ -1,0 +1,788 @@
+BEGIN
+	DECLARE _val DECIMAL(11,3) DEFAULT 0;
+	DECLARE _harvest DECIMAL(11,3) DEFAULT 0;
+    DECLARE _live DECIMAL(11,3) DEFAULT 0;
+    DECLARE _alw_live_sales DECIMAL(11,3) DEFAULT 0;
+    DECLARE _alw_broiler DECIMAL(11,3) DEFAULT 0;
+    DECLARE _total_heads DECIMAL(11,3) DEFAULT 0;
+    DECLARE _broiler_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _live_sales_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _production_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _broiler_cost DECIMAL(11,3) DEFAULT 0;
+    DECLARE _doa_daa DECIMAL(11,3) DEFAULT 0;
+    DECLARE _emaciated DECIMAL(11,3) DEFAULT 0;
+    DECLARE _production_yield DECIMAL(11,3) DEFAULT 0;
+   	DECLARE _total_live_broiler_amount DECIMAL(11,3) DEFAULT 0;
+    DECLARE _rate DECIMAL(11,3) DEFAULT 0;
+	DECLARE _cost DECIMAL(11,3) DEFAULT 0;
+    DECLARE _components VARCHAR(50);
+    DECLARE _material VARCHAR(50);
+	DECLARE _total_cost_rec DECIMAL(11,3) DEFAULT 0;
+    DECLARE _total_cost_others DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost_rec_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost_rec_liver DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost_rec_gizzard DECIMAL(11,3) DEFAULT 0;
+    
+    DECLARE done INT DEFAULT FALSE;
+    DECLARE cost_rec CURSOR FOR SELECT e.material_desc, IFNULL(b.rate,0), IFNULL(b.cost, 0) FROM prod_trans_tbl a, prod_trans_dtl_tbl b, material_tbl c, component_type_tbl d, material_tbl e WHERE a.prod_trans_id = b.prod_trans_id AND a.prod_id = c.material_id AND b.component_type_id = d.component_type_id AND b.article_id = e.material_id AND a.prod_trans_status = 3 AND a.bc_id = bc AND d.component_type = "COST RECOVERY" AND a.prod_id=354 AND b.prod_trans_dtl_date = harvest_date;
+                              
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+    
+    SELECT SUM((doc_tbl.doc - doc_tbl.doc * (pfd_tbl.pfd / 100)) * (hr_tbl.hr/100)) as harvested_heads INTO _harvest FROM 
+		(SELECT SUM(b.broiler_budget_qty) as doc, b.broiler_trans_date, d.bc_name FROM `broiler_trans_tbl` `a`
+         JOIN `broiler_trans_dtl_tbl` `b` ON `a`.`broiler_trans_id` = `b`.`broiler_trans_id`
+         AND `a`.`broiler_trans_status` = 3 
+         JOIN `broiler_subgroup_tbl` `c` ON `a`.`broiler_subgroup_id` = `c`.`broiler_subgroup_id`
+         AND `c`.`broiler_subgroup_name` = 'DOC PLACEMENT' JOIN `bc_tbl` `d` ON `a`.`bc_id` = `d`.`bc_id`
+         AND d.bc_id = bc AND b.broiler_trans_date = harvest_date GROUP BY a.bc_id, YEAR(b.broiler_trans_date),
+         MONTH(b.broiler_trans_date)) as doc_tbl,
+
+		(SELECT SUM(b.broiler_budget_qty) as pfd, b.broiler_trans_date, d.bc_name FROM `broiler_trans_tbl` `a`
+         JOIN `broiler_trans_dtl_tbl` `b` ON `a`.`broiler_trans_id` = `b`.`broiler_trans_id`
+         AND `a`.`broiler_trans_status` = 3 JOIN `broiler_subgroup_tbl` `c` ON `a`.`broiler_subgroup_id` = `c`.`broiler_subgroup_id`
+         AND `c`.`broiler_subgroup_name` = '%PFD' JOIN `bc_tbl` `d` ON `a`.`bc_id` = `d`.`bc_id` AND d.bc_id = bc
+         AND b.broiler_trans_date = harvest_date
+         GROUP BY a.bc_id, YEAR(b.broiler_trans_date), MONTH(b.broiler_trans_date)) as pfd_tbl,
+
+		(SELECT SUM(b.broiler_budget_qty) as hr, b.broiler_trans_date, d.bc_name FROM `broiler_trans_tbl` `a`
+         JOIN `broiler_trans_dtl_tbl` `b` ON `a`.`broiler_trans_id` = `b`.`broiler_trans_id`
+         AND `a`.`broiler_trans_status` = 3
+         JOIN `broiler_subgroup_tbl` `c` ON `a`.`broiler_subgroup_id` = `c`.`broiler_subgroup_id`
+         AND `c`.`broiler_subgroup_name` = 'HR' JOIN `bc_tbl` `d` ON `a`.`bc_id` = `d`.`bc_id` AND d.bc_id = bc
+         AND b.broiler_trans_date = harvest_date
+         GROUP BY a.bc_id, YEAR(b.broiler_trans_date), MONTH(b.broiler_trans_date)
+        ) as hr_tbl 
+            
+WHERE doc_tbl.broiler_trans_date = pfd_tbl.broiler_trans_date AND doc_tbl.bc_name = pfd_tbl.bc_name AND pfd_tbl.broiler_trans_date = hr_tbl.broiler_trans_date AND pfd_tbl.bc_name = hr_tbl.bc_name;
+
+SELECT IFNULL(SUM(c.sales_det_qty), 0) as live_sales_qty, 
+	
+    
+    IFNULL((
+       	SELECT y.sales_live_alw_det_value
+     	FROM sales_live_alw_tbl x, sales_live_alw_detail_tbl y
+        WHERE x.sales_live_alw_id = y.sales_live_alw_id AND x.sales_live_alw_status = 1 AND y.sales_live_alw_det_status = 1
+        AND x.bc_id = bc AND y.sales_live_alw_det_date = harvest_date),0
+    ) as alw_live,
+    
+    
+    IFNULL((
+    	SELECT b.broiler_budget_qty
+        FROM broiler_trans_tbl a, broiler_trans_dtl_tbl b, broiler_subgroup_tbl c, bc_tbl d
+        WHERE a.broiler_trans_id = b.broiler_trans_id AND a.broiler_subgroup_id = c.broiler_subgroup_id AND a.bc_id = d.bc_id
+        AND a.broiler_trans_status = 3 AND c.broiler_subgroup_name = "ALW" AND d.bc_id = bc AND b.broiler_trans_date = harvest_date),0
+    ) as alw_broiler
+INTO _live, _alw_live_sales, _alw_broiler
+    
+FROM sales_tbl a, sales_item_tbl b, sales_details_tbl c, material_tbl d, outlet_tbl e, bc_tbl f
+WHERE a.sales_id = b.sales_id AND b.sales_item_id = c.sales_item_id AND b.material_id = d.material_id AND a.outlet_id = e.outlet_id AND e.bc_id = f.bc_id AND a.sales_status = bc AND b.sales_item_status = 1 AND c.sales_det_status = 1 AND c.sales_det_date = harvest_date AND f.bc_id = 1 AND d.material_desc = 'LIVE BROILER';
+
+SELECT IFNULL(SUM(a.trans_qty), 0)
+INTO _broiler_cost
+FROM broiler_cost_summary_tbl a, broiler_group_tbl b, bc_tbl c WHERE a.broiler_group_id = b.broiler_group_id AND a.bc_id = c.bc_id AND c.bc_id = bc AND a.trans_date = harvest_date;
+
+
+SELECT IFNULL(b.rate, 0)
+INTO _doa_daa
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, services_tbl c, services_group_tbl d WHERE c.service_group_id = d.service_group_id AND a.prod_trans_id =  b.prod_trans_id AND b.article_id = c.service_id AND b.prod_trans_dtl_date = harvest_date AND a.prod_trans_status = 3 AND b.article_type_id = 2 AND a.bc_id = bc AND c.service_desc =  "DOA/DAA";
+
+
+SELECT IFNULL(b.rate, 0)
+INTO _emaciated
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, services_tbl c, services_group_tbl d WHERE c.service_group_id = d.service_group_id AND a.prod_trans_id =  b.prod_trans_id AND b.article_id = c.service_id AND b.prod_trans_dtl_date = harvest_date AND a.prod_trans_status = 3 AND b.article_type_id = 2 AND a.bc_id = bc AND c.service_desc =  "Emaciated Birds/Others";
+
+
+SELECT IFNULL(b.rate, 0)
+INTO _production_yield
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, services_tbl c, services_group_tbl d WHERE c.service_group_id = d.service_group_id AND a.prod_trans_id =  b.prod_trans_id AND b.article_id = c.service_id AND b.prod_trans_dtl_date = harvest_date AND a.prod_trans_status = 3 AND b.article_type_id = 2 AND a.bc_id = bc AND c.service_desc =  "Production Yield";
+
+SET _total_heads = _harvest - _live;
+SET _broiler_kg = _harvest * _alw_broiler;
+SET _live_sales_kg = _live * _alw_live_sales;
+SET _production_kg = _broiler_kg - _live_sales_kg;
+SET _total_heads = _total_heads - (_total_heads * (_doa_daa)/100);
+SET _total_heads = _total_heads - (_total_heads * (_emaciated/100));
+SET _production_kg = _production_kg * (_production_yield/100);
+SET _total_live_broiler_amount = _broiler_kg * _broiler_cost;
+
+
+	OPEN cost_rec;
+    getscostrec: LOOP
+      FETCH cost_rec INTO _components, _rate, _cost;
+        IF done = 1 THEN
+          LEAVE getscostrec;
+        END IF;
+        
+        IF _components = 'BOUNTY GIZZARD' THEN
+        	SET _cost_rec_gizzard = ((_rate/100) * _production_kg);
+        ELSEIF _components = 'BOUNTY LIVER 1KG - FRESH' THEN
+        	SET _cost_rec_liver = ((_rate/100) * _production_kg);
+        
+        END IF;
+		
+        SET _cost_rec_kg = ((_rate/100) * _production_kg);
+     	SET _total_cost_rec = _total_cost_rec + (((_rate/100) * _production_kg) * _cost);
+   	END LOOP getscostrec;
+    CLOSE cost_rec;
+
+	BEGIN
+    	DECLARE _rate DECIMAL(11,3) DEFAULT 0;
+		DECLARE _cost DECIMAL(11,3) DEFAULT 0;
+        DECLARE _amount_type DECIMAL(11,3) DEFAULT 0;
+    	DECLARE _components VARCHAR(50);
+    	DECLARE _material VARCHAR(50);
+        DECLARE done INT DEFAULT FALSE;
+    	DECLARE cost_others CURSOR FOR SELECT e.material_desc, d.component_type, b.amount_type_id, b.rate, b.cost FROM prod_trans_tbl a, prod_trans_dtl_tbl b, material_tbl c, component_type_tbl d, material_tbl e WHERE a.prod_trans_id = b.prod_trans_id AND a.prod_id = c.material_id AND b.component_type_id = d.component_type_id AND b.article_id = e.material_id AND a.prod_trans_status = 3 AND a.bc_id = bc AND b.article_type_id = 1 AND d.component_type IN ("Packaging", "Conversion Cost") AND b.prod_trans_dtl_date = harvest_date AND a.process_type_id = 1
+
+	UNION
+
+	SELECT e.service_desc, d.component_type, b.amount_type_id, b.rate, b.cost FROM prod_trans_tbl a, prod_trans_dtl_tbl b, material_tbl c, component_type_tbl d, services_tbl e WHERE a.prod_trans_id = b.prod_trans_id AND a.prod_id = c.material_id AND b.component_type_id = d.component_type_id AND b.article_id = e.service_id AND a.prod_trans_status = 3 AND a.bc_id = bc AND b.article_type_id = 2 AND d.component_type IN ("Packaging", "Conversion Cost") AND b.prod_trans_dtl_date = harvest_date AND a.process_type_id = 1;
+        DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+        OPEN cost_others;
+            getscostothers: LOOP
+              FETCH cost_others INTO _material, _components, _amount_type, _rate, _cost;
+                IF done = 1 THEN
+                  LEAVE getscostothers;
+                END IF;
+                
+                IF _components = 'CONVERSION COST' THEN
+                	SET _total_cost_others = _total_cost_others + ((_rate * _cost) * _total_heads);
+                ELSEIF _components = 'PACKAGING' THEN
+                	IF _material = 'GIZZARD PLASTIC' THEN
+                    	SET _total_cost_others = _total_cost_others + (_cost_rec_gizzard * _cost);
+                    ELSEIF _material = 'LIVER PLASTIC' THEN
+                    	SET _total_cost_others = _total_cost_others + (_cost_rec_liver * _cost);
+                    
+                    ELSEIF _material = 'UNBRANDED 12X14 PLASTIC' THEN
+                    	SET _total_cost_others = _total_cost_others + ((_total_heads * _rate) * _cost);
+                    
+                    ELSE
+                    	IF _rate != NULL THEN
+                    		SET _total_cost_others = _total_cost_others + ((_total_heads / _rate) * _cost);
+                    	END IF;
+                	END IF;
+                END IF;
+                
+				
+               
+            END LOOP getscostothers;
+		CLOSE cost_others;
+	END;
+    /*SET total_qty = _total_heads;*/
+    SET total_kgs = _production_kg;
+    SET ave_wt = _production_kg / _total_heads;
+    SET total_cost_amount = (_total_cost_others + _total_live_broiler_amount);
+    SET cost_per_head = total_cost_amount / total_kgs;
+   
+    
+END
+
+
+
+New
+
+
+
+BEGIN
+    DECLARE _val DECIMAL(11,3) DEFAULT 0;
+    DECLARE _harvest DECIMAL(11,3) DEFAULT 0;
+    DECLARE _live DECIMAL(11,3) DEFAULT 0;
+    DECLARE _alw_live_sales DECIMAL(11,3) DEFAULT 0;
+    DECLARE _alw_broiler DECIMAL(11,3) DEFAULT 0;
+    DECLARE _total_heads DECIMAL(11,3) DEFAULT 0;
+    DECLARE _broiler_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _live_sales_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _production_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _broiler_cost DECIMAL(11,3) DEFAULT 0;
+    DECLARE _doa_daa DECIMAL(11,3) DEFAULT 0;
+    DECLARE _emaciated DECIMAL(11,3) DEFAULT 0;
+    DECLARE _production_yield DECIMAL(11,3) DEFAULT 0;
+    DECLARE _total_live_broiler_amount DECIMAL(11,3) DEFAULT 0;
+    DECLARE _rate DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost DECIMAL(11,3) DEFAULT 0;
+    DECLARE _components VARCHAR(50);
+    DECLARE _material VARCHAR(50);
+    DECLARE _total_cost_rec DECIMAL(11,3) DEFAULT 0;
+    DECLARE _total_cost_others DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost_rec_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost_rec_liver DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost_rec_gizzard DECIMAL(11,3) DEFAULT 0;
+    DECLARE _counter DECIMAL(11,3) DEFAULT 0;
+    
+    DECLARE done INT DEFAULT FALSE;
+    DECLARE cost_rec CURSOR FOR SELECT e.material_desc, IFNULL(b.rate,0), IFNULL(b.cost, 0) FROM prod_trans_tbl a, prod_trans_dtl_tbl b, material_tbl c, component_type_tbl d, material_tbl e WHERE a.prod_trans_id = b.prod_trans_id AND a.prod_id = c.material_id AND b.component_type_id = d.component_type_id AND b.article_id = e.material_id AND a.prod_trans_status = 3 AND a.bc_id = bc AND d.component_type = "COST RECOVERY" AND a.prod_id=354 AND b.prod_trans_dtl_date = harvest_date;
+                              
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+    
+    SELECT SUM((doc_tbl.doc - doc_tbl.doc * (pfd_tbl.pfd / 100)) * (hr_tbl.hr/100)) as harvested_heads INTO _harvest FROM 
+        (SELECT SUM(b.broiler_budget_qty) as doc, b.broiler_trans_date, d.bc_name FROM `broiler_trans_tbl` `a`
+         JOIN `broiler_trans_dtl_tbl` `b` ON `a`.`broiler_trans_id` = `b`.`broiler_trans_id`
+         AND `a`.`broiler_trans_status` = 3 
+         JOIN `broiler_subgroup_tbl` `c` ON `a`.`broiler_subgroup_id` = `c`.`broiler_subgroup_id`
+         AND `c`.`broiler_subgroup_name` = 'DOC PLACEMENT' JOIN `bc_tbl` `d` ON `a`.`bc_id` = `d`.`bc_id`
+         AND d.bc_id = bc AND b.broiler_trans_date = harvest_date GROUP BY a.bc_id, YEAR(b.broiler_trans_date),
+         MONTH(b.broiler_trans_date)) as doc_tbl,
+
+        (SELECT SUM(b.broiler_budget_qty) as pfd, b.broiler_trans_date, d.bc_name FROM `broiler_trans_tbl` `a`
+         JOIN `broiler_trans_dtl_tbl` `b` ON `a`.`broiler_trans_id` = `b`.`broiler_trans_id`
+         AND `a`.`broiler_trans_status` = 3 JOIN `broiler_subgroup_tbl` `c` ON `a`.`broiler_subgroup_id` = `c`.`broiler_subgroup_id`
+         AND `c`.`broiler_subgroup_name` = '%PFD' JOIN `bc_tbl` `d` ON `a`.`bc_id` = `d`.`bc_id` AND d.bc_id = bc
+         AND b.broiler_trans_date = harvest_date
+         GROUP BY a.bc_id, YEAR(b.broiler_trans_date), MONTH(b.broiler_trans_date)) as pfd_tbl,
+
+        (SELECT SUM(b.broiler_budget_qty) as hr, b.broiler_trans_date, d.bc_name FROM `broiler_trans_tbl` `a`
+         JOIN `broiler_trans_dtl_tbl` `b` ON `a`.`broiler_trans_id` = `b`.`broiler_trans_id`
+         AND `a`.`broiler_trans_status` = 3
+         JOIN `broiler_subgroup_tbl` `c` ON `a`.`broiler_subgroup_id` = `c`.`broiler_subgroup_id`
+         AND `c`.`broiler_subgroup_name` = 'HR' JOIN `bc_tbl` `d` ON `a`.`bc_id` = `d`.`bc_id` AND d.bc_id = bc
+         AND b.broiler_trans_date = harvest_date
+         GROUP BY a.bc_id, YEAR(b.broiler_trans_date), MONTH(b.broiler_trans_date)
+        ) as hr_tbl 
+            
+WHERE doc_tbl.broiler_trans_date = pfd_tbl.broiler_trans_date AND doc_tbl.bc_name = pfd_tbl.bc_name AND pfd_tbl.broiler_trans_date = hr_tbl.broiler_trans_date AND pfd_tbl.bc_name = hr_tbl.bc_name;
+
+SELECT IFNULL(SUM(c.sales_det_qty), 0) as live_sales_qty, 
+    
+    
+    IFNULL((
+        SELECT y.sales_live_alw_det_value
+        FROM sales_live_alw_tbl x, sales_live_alw_detail_tbl y
+        WHERE x.sales_live_alw_id = y.sales_live_alw_id AND x.sales_live_alw_status = 1 AND y.sales_live_alw_det_status = 1
+        AND x.bc_id = bc AND y.sales_live_alw_det_date = harvest_date),0
+    ) as alw_live,
+    
+    
+    IFNULL((
+        SELECT b.broiler_budget_qty
+        FROM broiler_trans_tbl a, broiler_trans_dtl_tbl b, broiler_subgroup_tbl c, bc_tbl d
+        WHERE a.broiler_trans_id = b.broiler_trans_id AND a.broiler_subgroup_id = c.broiler_subgroup_id AND a.bc_id = d.bc_id
+        AND a.broiler_trans_status = 3 AND c.broiler_subgroup_name = "ALW" AND d.bc_id = bc AND b.broiler_trans_date = harvest_date),0
+    ) as alw_broiler
+INTO _live, _alw_live_sales, _alw_broiler
+    
+FROM sales_tbl a, sales_item_tbl b, sales_details_tbl c, material_tbl d, outlet_tbl e, bc_tbl f
+WHERE a.sales_id = b.sales_id AND b.sales_item_id = c.sales_item_id AND b.material_id = d.material_id AND a.outlet_id = e.outlet_id AND e.bc_id = f.bc_id AND a.sales_status = bc AND b.sales_item_status = 1 AND c.sales_det_status = 1 AND c.sales_det_date = harvest_date AND f.bc_id = 1 AND d.material_desc = 'LIVE BROILER';
+
+SELECT IFNULL(SUM(a.trans_qty), 0)
+INTO _broiler_cost
+FROM broiler_cost_summary_tbl a, broiler_group_tbl b, bc_tbl c WHERE a.broiler_group_id = b.broiler_group_id AND a.bc_id = c.bc_id AND c.bc_id = bc AND a.trans_date = harvest_date;
+
+
+SELECT IFNULL(b.rate, 0)
+INTO _doa_daa
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, services_tbl c, services_group_tbl d WHERE c.service_group_id = d.service_group_id AND a.prod_trans_id =  b.prod_trans_id AND b.article_id = c.service_id AND b.prod_trans_dtl_date = harvest_date AND a.prod_trans_status = 3 AND b.article_type_id = 2 AND a.bc_id = bc AND c.service_desc =  "DOA/DAA";
+
+
+SELECT IFNULL(b.rate, 0)
+INTO _emaciated
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, services_tbl c, services_group_tbl d WHERE c.service_group_id = d.service_group_id AND a.prod_trans_id =  b.prod_trans_id AND b.article_id = c.service_id AND b.prod_trans_dtl_date = harvest_date AND a.prod_trans_status = 3 AND b.article_type_id = 2 AND a.bc_id = bc AND c.service_desc =  "Emaciated Birds/Others";
+
+
+SELECT IFNULL(b.rate, 0)
+INTO _production_yield
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, services_tbl c, services_group_tbl d WHERE c.service_group_id = d.service_group_id AND a.prod_trans_id =  b.prod_trans_id AND b.article_id = c.service_id AND b.prod_trans_dtl_date = harvest_date AND a.prod_trans_status = 3 AND b.article_type_id = 2 AND a.bc_id = bc AND c.service_desc =  "Production Yield";
+
+SET _total_heads = _harvest - _live;
+SET _broiler_kg = _harvest * _alw_broiler;
+SET _live_sales_kg = _live * _alw_live_sales;
+SET _production_kg = _broiler_kg - _live_sales_kg;
+SET _total_heads = _total_heads - (_total_heads * (_doa_daa)/100);
+SET _total_heads = _total_heads - (_total_heads * (_emaciated/100));
+SET _production_kg = _production_kg * (_production_yield/100);
+SET _total_live_broiler_amount = _broiler_kg * _broiler_cost;
+
+
+    OPEN cost_rec;
+    getscostrec: LOOP
+      FETCH cost_rec INTO _components, _rate, _cost;
+        IF done = 1 THEN
+          LEAVE getscostrec;
+        END IF;
+        
+        IF _components = 'BOUNTY GIZZARD' THEN
+            SET _cost_rec_gizzard = ((_rate/100) * _production_kg);
+        ELSEIF _components = 'BOUNTY LIVER 1KG - FRESH' THEN
+            SET _cost_rec_liver = ((_rate/100) * _production_kg);
+        
+        END IF;
+        
+        SET _cost_rec_kg = ((_rate/100) * _production_kg);
+        SET _total_cost_rec = _total_cost_rec + (((_rate/100) * _production_kg) * _cost);
+        
+        
+    END LOOP getscostrec;
+    CLOSE cost_rec;
+   
+
+    BEGIN
+        DECLARE _rate DECIMAL(11,3) DEFAULT 0;
+        DECLARE _cost DECIMAL(11,3) DEFAULT 0;
+        DECLARE _amount_type DECIMAL(11,3) DEFAULT 0;
+        DECLARE _components VARCHAR(50);
+        DECLARE _material VARCHAR(50);
+        DECLARE done INT DEFAULT FALSE;
+        DECLARE cost_others CURSOR FOR SELECT e.material_desc, d.component_type, b.amount_type_id, b.rate, b.cost FROM prod_trans_tbl a, prod_trans_dtl_tbl b, material_tbl c, component_type_tbl d, material_tbl e WHERE a.prod_trans_id = b.prod_trans_id AND a.prod_id = c.material_id AND b.component_type_id = d.component_type_id AND b.article_id = e.material_id AND a.prod_trans_status = 3 AND a.bc_id = bc AND b.article_type_id = 1 AND d.component_type IN ("Packaging", "Conversion Cost") AND b.prod_trans_dtl_date = harvest_date AND a.process_type_id = 1
+
+    UNION
+
+    SELECT e.service_desc, d.component_type, b.amount_type_id, b.rate, b.cost FROM prod_trans_tbl a, prod_trans_dtl_tbl b, material_tbl c, component_type_tbl d, services_tbl e WHERE a.prod_trans_id = b.prod_trans_id AND a.prod_id = c.material_id AND b.component_type_id = d.component_type_id AND b.article_id = e.service_id AND a.prod_trans_status = 3 AND a.bc_id = bc AND b.article_type_id = 2 AND d.component_type IN ("Packaging", "Conversion Cost") AND b.prod_trans_dtl_date = harvest_date AND a.process_type_id = 1;
+        DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+        OPEN cost_others;
+            getscostothers: LOOP
+              FETCH cost_others INTO _material, _components, _amount_type, _rate, _cost;
+                IF done = 1 THEN
+                  LEAVE getscostothers;
+                END IF;
+                
+                IF _components = 'CONVERSION COST' THEN
+                    
+                    SET _total_cost_others = _total_cost_others + ((_rate * _cost) * _total_heads);
+                    SET _counter = _counter + _rate;
+                ELSEIF _components = 'PACKAGING' THEN
+                    IF _material = 'GIZZARD PLASTIC' THEN
+                        SET _total_cost_others = _total_cost_others + (_cost_rec_gizzard * _cost);
+                    ELSEIF _material = 'LIVER PLASTIC' THEN
+                        SET _total_cost_others = _total_cost_others + (_cost_rec_liver * _cost);
+                    
+                    ELSEIF _material = 'UNBRANDED 12X14 PLASTIC' THEN
+                        SET _total_cost_others = _total_cost_others + ((_total_heads * _rate) * _cost);
+                    
+                    ELSE
+                        IF _rate != NULL THEN
+                            SET _total_cost_others = _total_cost_others + ((_total_heads / _rate) * _cost);
+                        END IF;
+                    END IF;
+                END IF;
+                
+            
+            END LOOP getscostothers;
+        CLOSE cost_others;
+        
+    END;
+    SET total_qty = _counter;
+    /*SET total_qty = _total_heads;*/
+    SET total_kgs = _production_kg;
+    SET ave_wt = _production_kg / _total_heads;
+    SET total_cost_amount = (_total_cost_others + _total_live_broiler_amount) - _total_cost_rec;
+    SET cost_per_head = total_cost_amount / total_kgs;
+   
+    
+END
+
+
+New September 21, 2019 11:30 PM
+
+BEGIN
+    DECLARE _val DECIMAL(11,3) DEFAULT 0;
+    DECLARE _harvest DECIMAL(11,3) DEFAULT 0;
+    DECLARE _live DECIMAL(11,3) DEFAULT 0;
+    DECLARE _alw_live_sales DECIMAL(11,3) DEFAULT 0;
+    DECLARE _alw_broiler DECIMAL(11,3) DEFAULT 0;
+    DECLARE _total_heads DECIMAL(11,3) DEFAULT 0;
+    DECLARE _broiler_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _live_sales_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _production_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _broiler_cost DECIMAL(11,3) DEFAULT 0;
+    DECLARE _doa_daa DECIMAL(11,3) DEFAULT 0;
+    DECLARE _emaciated DECIMAL(11,3) DEFAULT 0;
+    DECLARE _production_yield DECIMAL(11,3) DEFAULT 0;
+    DECLARE _total_live_broiler_amount DECIMAL(11,3) DEFAULT 0;
+    DECLARE _rate DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost DECIMAL(11,3) DEFAULT 0;
+    DECLARE _components VARCHAR(50);
+    DECLARE _material VARCHAR(50);
+    DECLARE _total_cost_rec DECIMAL(11,3) DEFAULT 0;
+    DECLARE _total_cost_others DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost_rec_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost_rec_liver DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost_rec_gizzard DECIMAL(11,3) DEFAULT 0;
+    DECLARE _counter VARCHAR(3000) DEFAULT '';
+    
+    
+                              
+    
+    
+    SELECT SUM((doc_tbl.doc - doc_tbl.doc * (pfd_tbl.pfd / 100)) * (hr_tbl.hr/100)) as harvested_heads INTO _harvest FROM 
+        (SELECT SUM(b.broiler_budget_qty) as doc, b.broiler_trans_date, d.bc_name FROM `broiler_trans_tbl` `a`
+         JOIN `broiler_trans_dtl_tbl` `b` ON `a`.`broiler_trans_id` = `b`.`broiler_trans_id`
+         AND `a`.`broiler_trans_status` = 3 
+         JOIN `broiler_subgroup_tbl` `c` ON `a`.`broiler_subgroup_id` = `c`.`broiler_subgroup_id`
+         AND `c`.`broiler_subgroup_name` = 'DOC PLACEMENT' JOIN `bc_tbl` `d` ON `a`.`bc_id` = `d`.`bc_id`
+         AND d.bc_id = bc AND b.broiler_trans_date = harvest_date GROUP BY a.bc_id, YEAR(b.broiler_trans_date),
+         MONTH(b.broiler_trans_date)) as doc_tbl,
+
+        (SELECT SUM(b.broiler_budget_qty) as pfd, b.broiler_trans_date, d.bc_name FROM `broiler_trans_tbl` `a`
+         JOIN `broiler_trans_dtl_tbl` `b` ON `a`.`broiler_trans_id` = `b`.`broiler_trans_id`
+         AND `a`.`broiler_trans_status` = 3 JOIN `broiler_subgroup_tbl` `c` ON `a`.`broiler_subgroup_id` = `c`.`broiler_subgroup_id`
+         AND `c`.`broiler_subgroup_name` = '%PFD' JOIN `bc_tbl` `d` ON `a`.`bc_id` = `d`.`bc_id` AND d.bc_id = bc
+         AND b.broiler_trans_date = harvest_date
+         GROUP BY a.bc_id, YEAR(b.broiler_trans_date), MONTH(b.broiler_trans_date)) as pfd_tbl,
+
+        (SELECT SUM(b.broiler_budget_qty) as hr, b.broiler_trans_date, d.bc_name FROM `broiler_trans_tbl` `a`
+         JOIN `broiler_trans_dtl_tbl` `b` ON `a`.`broiler_trans_id` = `b`.`broiler_trans_id`
+         AND `a`.`broiler_trans_status` = 3
+         JOIN `broiler_subgroup_tbl` `c` ON `a`.`broiler_subgroup_id` = `c`.`broiler_subgroup_id`
+         AND `c`.`broiler_subgroup_name` = 'HR' JOIN `bc_tbl` `d` ON `a`.`bc_id` = `d`.`bc_id` AND d.bc_id = bc
+         AND b.broiler_trans_date = harvest_date
+         GROUP BY a.bc_id, YEAR(b.broiler_trans_date), MONTH(b.broiler_trans_date)
+        ) as hr_tbl 
+            
+WHERE doc_tbl.broiler_trans_date = pfd_tbl.broiler_trans_date AND doc_tbl.bc_name = pfd_tbl.bc_name AND pfd_tbl.broiler_trans_date = hr_tbl.broiler_trans_date AND pfd_tbl.bc_name = hr_tbl.bc_name;
+
+SELECT IFNULL(SUM(c.sales_det_qty), 0) as live_sales_qty, 
+    
+    
+    IFNULL((
+        SELECT y.sales_live_alw_det_value
+        FROM sales_live_alw_tbl x, sales_live_alw_detail_tbl y
+        WHERE x.sales_live_alw_id = y.sales_live_alw_id AND x.sales_live_alw_status = 1 AND y.sales_live_alw_det_status = 1
+        AND x.bc_id = bc AND y.sales_live_alw_det_date = harvest_date),0
+    ) as alw_live,
+    
+    
+    IFNULL((
+        SELECT b.broiler_budget_qty
+        FROM broiler_trans_tbl a, broiler_trans_dtl_tbl b, broiler_subgroup_tbl c, bc_tbl d
+        WHERE a.broiler_trans_id = b.broiler_trans_id AND a.broiler_subgroup_id = c.broiler_subgroup_id AND a.bc_id = d.bc_id
+        AND a.broiler_trans_status = 3 AND c.broiler_subgroup_name = "ALW" AND d.bc_id = bc AND b.broiler_trans_date = harvest_date),0
+    ) as alw_broiler
+INTO _live, _alw_live_sales, _alw_broiler
+    
+FROM sales_tbl a, sales_item_tbl b, sales_details_tbl c, material_tbl d, outlet_tbl e, bc_tbl f
+WHERE a.sales_id = b.sales_id AND b.sales_item_id = c.sales_item_id AND b.material_id = d.material_id AND a.outlet_id = e.outlet_id AND e.bc_id = f.bc_id AND a.sales_status = bc AND b.sales_item_status = 1 AND c.sales_det_status = 1 AND c.sales_det_date = harvest_date AND f.bc_id = 1 AND d.material_desc = 'LIVE BROILER';
+
+SELECT IFNULL(SUM(a.trans_qty), 0)
+INTO _broiler_cost
+FROM broiler_cost_summary_tbl a, broiler_group_tbl b, bc_tbl c WHERE a.broiler_group_id = b.broiler_group_id AND a.bc_id = c.bc_id AND c.bc_id = bc AND a.trans_date = harvest_date;
+
+
+SELECT IFNULL(b.rate, 0)
+INTO _doa_daa
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, services_tbl c, services_group_tbl d WHERE c.service_group_id = d.service_group_id AND a.prod_trans_id =  b.prod_trans_id AND b.article_id = c.service_id AND b.prod_trans_dtl_date = harvest_date AND a.prod_trans_status = 3 AND b.article_type_id = 2 AND a.bc_id = bc AND c.service_desc =  "DOA/DAA";
+
+
+SELECT IFNULL(b.rate, 0)
+INTO _emaciated
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, services_tbl c, services_group_tbl d WHERE c.service_group_id = d.service_group_id AND a.prod_trans_id =  b.prod_trans_id AND b.article_id = c.service_id AND b.prod_trans_dtl_date = harvest_date AND a.prod_trans_status = 3 AND b.article_type_id = 2 AND a.bc_id = bc AND c.service_desc =  "Emaciated Birds/Others";
+
+
+SELECT IFNULL(b.rate, 0)
+INTO _production_yield
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, services_tbl c, services_group_tbl d WHERE c.service_group_id = d.service_group_id AND a.prod_trans_id =  b.prod_trans_id AND b.article_id = c.service_id AND b.prod_trans_dtl_date = harvest_date AND a.prod_trans_status = 3 AND b.article_type_id = 2 AND a.bc_id = bc AND c.service_desc =  "Production Yield";
+
+SET _total_heads = _harvest - _live;
+SET _broiler_kg = _harvest * _alw_broiler;
+SET _live_sales_kg = _live * _alw_live_sales;
+SET _production_kg = _broiler_kg - _live_sales_kg;
+SET _total_heads = _total_heads - (_total_heads * (_doa_daa)/100);
+SET _total_heads = _total_heads - (_total_heads * (_emaciated/100));
+SET _production_kg = _production_kg * (_production_yield/100);
+SET _total_live_broiler_amount = _broiler_kg * _broiler_cost;
+
+    BEGIN
+        DECLARE done INT DEFAULT FALSE;
+        DECLARE cost_rec CURSOR FOR SELECT e.material_desc, IFNULL(b.rate,0), IFNULL(b.cost, 0) FROM prod_trans_tbl a, prod_trans_dtl_tbl b, material_tbl c, component_type_tbl d, material_tbl e WHERE a.prod_trans_id = b.prod_trans_id AND a.prod_id = c.material_id AND b.component_type_id = d.component_type_id AND b.article_id = e.material_id AND a.prod_trans_status = 3 AND a.bc_id = bc AND d.component_type = "COST RECOVERY" AND a.prod_id=354 AND b.prod_trans_dtl_date = harvest_date;
+        DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+        OPEN cost_rec;
+        getscostrec: LOOP
+          FETCH cost_rec INTO _components, _rate, _cost;
+            IF done = 1 THEN
+              LEAVE getscostrec;
+            END IF;
+
+            IF _components = 'BOUNTY GIZZARD ' THEN
+                SET _cost_rec_gizzard = ((_rate/100) * _broiler_kg);
+
+            ELSEIF _components = 'BOUNTY LIVER 1KG - FRESH' THEN
+                SET _cost_rec_liver = ((_rate/100) * _broiler_kg);
+
+            END IF;
+
+            SET _cost_rec_kg = ((_rate/100) * _production_kg);
+            SET _total_cost_rec = _total_cost_rec + (((_rate/100) * _broiler_kg) * _cost);
+            
+        
+        END LOOP getscostrec;
+        CLOSE cost_rec;
+    END;
+   
+
+    BEGIN
+        DECLARE _rate DECIMAL(11,3) DEFAULT 0;
+        DECLARE _cost DECIMAL(11,3) DEFAULT 0;
+        DECLARE _amount_type DECIMAL(11,3) DEFAULT 0;
+        DECLARE _components VARCHAR(50);
+        DECLARE _material VARCHAR(50);
+        DECLARE done INT DEFAULT FALSE;
+        DECLARE cost_others CURSOR FOR SELECT e.material_desc, d.component_type, b.amount_type_id, b.rate, b.cost FROM prod_trans_tbl a, prod_trans_dtl_tbl b, material_tbl c, component_type_tbl d, material_tbl e WHERE a.prod_trans_id = b.prod_trans_id AND a.prod_id = c.material_id AND b.component_type_id = d.component_type_id AND b.article_id = e.material_id AND a.prod_trans_status = 3 AND a.bc_id = bc AND b.article_type_id = 1 AND d.component_type IN ("Packaging", "Conversion Cost") AND b.prod_trans_dtl_date = harvest_date AND a.process_type_id = 1
+
+    UNION
+
+    SELECT e.service_desc, d.component_type, b.amount_type_id, b.rate, b.cost FROM prod_trans_tbl a, prod_trans_dtl_tbl b, material_tbl c, component_type_tbl d, services_tbl e WHERE a.prod_trans_id = b.prod_trans_id AND a.prod_id = c.material_id AND b.component_type_id = d.component_type_id AND b.article_id = e.service_id AND a.prod_trans_status = 3 AND a.bc_id = bc AND b.article_type_id = 2 AND d.component_type IN ("Packaging", "Conversion Cost") AND b.prod_trans_dtl_date = harvest_date AND a.process_type_id = 1;
+        DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+        OPEN cost_others;
+            getscostothers: LOOP
+              FETCH cost_others INTO _material, _components, _amount_type, _rate, _cost;
+                IF done = 1 THEN
+                  LEAVE getscostothers;
+                END IF;
+                
+                IF _components = 'CONVERSION COST' THEN
+                    
+                    SET _total_cost_others = _total_cost_others + (_rate * _total_heads);
+                    SET _counter = CONCAT(_counter, ' | ', _material, ' - ', '(', _rate ,' / ', _total_heads, ') ', (_rate * _total_heads));
+                ELSEIF _components = 'PACKAGING' THEN
+                    IF _material = 'GIZZARD PLASTIC' THEN
+                        SET _total_cost_others = _total_cost_others + (_cost_rec_gizzard * _cost);
+                        SET _counter = CONCAT(_counter, ' | ', _material, ' - ', '(', _cost_rec_gizzard ,' / ', _cost, ') ', (_cost_rec_gizzard * _cost));
+                    ELSEIF _material = 'LIVER PLASTIC' THEN
+                        SET _total_cost_others = _total_cost_others + (_cost_rec_liver * _cost);
+                        SET _counter = CONCAT(_counter, ' | ', _material, ' - ', '(', _cost_rec_liver ,' / ', _cost, ') ', (_cost_rec_liver * _cost));
+                    ELSEIF _material = 'UNBRANDED 12X14 PLASTIC' THEN
+                        SET _total_cost_others = _total_cost_others + ((_total_heads * _rate) * _cost);
+                        SET _counter = CONCAT(_counter, ' | ', _material, ' - ', '(', _total_heads ,' / ', _cost, ') ', ((_total_heads * _rate) * _cost));
+                    ELSE
+                        IF _rate != 0 THEN
+                            SET _total_cost_others = _total_cost_others + ((_total_heads / _rate) * _cost);
+                            SET _counter = CONCAT(_counter, ' | ', _material, ' - ', '(', _total_heads ,' / ', _rate, _cost, ') ', ((_total_heads / _rate) * _cost));
+                        END IF;
+                    END IF;
+                END IF;
+                
+            
+            END LOOP getscostothers;
+        CLOSE cost_others;
+        
+    END;
+    
+    SET total_qty = _counter;
+    /*SET total_qty = _total_heads;*/
+    SET total_kgs = _production_kg;
+    
+    SET ave_wt = _production_kg / _total_heads;
+    SET total_cost_amount = (_total_cost_others + _total_live_broiler_amount) - _total_cost_rec;
+    SET cost_per_head = total_cost_amount / total_kgs;
+   
+    
+END
+
+
+
+BEGIN
+    DECLARE _val DECIMAL(11,3) DEFAULT 0;
+    DECLARE _harvest DECIMAL(11,3) DEFAULT 0;
+    DECLARE _live DECIMAL(11,3) DEFAULT 0;
+    DECLARE _alw_live_sales DECIMAL(11,3) DEFAULT 0;
+    DECLARE _alw_broiler DECIMAL(11,3) DEFAULT 0;
+    DECLARE _total_heads DECIMAL(11,3) DEFAULT 0;
+    DECLARE _broiler_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _live_sales_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _production_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _production_based_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _broiler_cost DECIMAL(11,3) DEFAULT 0;
+    DECLARE _doa_daa DECIMAL(11,3) DEFAULT 0;
+    DECLARE _emaciated DECIMAL(11,3) DEFAULT 0;
+    DECLARE _production_yield DECIMAL(11,3) DEFAULT 0;
+    DECLARE _total_live_broiler_amount DECIMAL(11,3) DEFAULT 0;
+    DECLARE _rate DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost DECIMAL(11,3) DEFAULT 0;
+    DECLARE _components VARCHAR(50);
+    DECLARE _material VARCHAR(50);
+    DECLARE _total_cost_rec DECIMAL(11,3) DEFAULT 0;
+    DECLARE _total_cost_others DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost_rec_kg DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost_rec_liver DECIMAL(11,3) DEFAULT 0;
+    DECLARE _cost_rec_gizzard DECIMAL(11,3) DEFAULT 0;
+    DECLARE _counter VARCHAR(3000) DEFAULT '';
+    DECLARE _test VARCHAR(3000) DEFAULT '';
+    
+    
+                              
+    
+    
+    SELECT SUM((doc_tbl.doc - doc_tbl.doc * (pfd_tbl.pfd / 100)) * (hr_tbl.hr/100)) as harvested_heads INTO _harvest FROM 
+        (SELECT SUM(b.broiler_budget_qty) as doc, b.broiler_trans_date, d.bc_name FROM `broiler_trans_tbl` `a`
+         JOIN `broiler_trans_dtl_tbl` `b` ON `a`.`broiler_trans_id` = `b`.`broiler_trans_id`
+         AND `a`.`broiler_trans_status` = 3 
+         JOIN `broiler_subgroup_tbl` `c` ON `a`.`broiler_subgroup_id` = `c`.`broiler_subgroup_id`
+         AND `c`.`broiler_subgroup_name` = 'DOC PLACEMENT' JOIN `bc_tbl` `d` ON `a`.`bc_id` = `d`.`bc_id`
+         AND d.bc_id = bc AND b.broiler_trans_date = harvest_date GROUP BY a.bc_id, YEAR(b.broiler_trans_date),
+         MONTH(b.broiler_trans_date)) as doc_tbl,
+
+        (SELECT SUM(b.broiler_budget_qty) as pfd, b.broiler_trans_date, d.bc_name FROM `broiler_trans_tbl` `a`
+         JOIN `broiler_trans_dtl_tbl` `b` ON `a`.`broiler_trans_id` = `b`.`broiler_trans_id`
+         AND `a`.`broiler_trans_status` = 3 JOIN `broiler_subgroup_tbl` `c` ON `a`.`broiler_subgroup_id` = `c`.`broiler_subgroup_id`
+         AND `c`.`broiler_subgroup_name` = '%PFD' JOIN `bc_tbl` `d` ON `a`.`bc_id` = `d`.`bc_id` AND d.bc_id = bc
+         AND b.broiler_trans_date = harvest_date
+         GROUP BY a.bc_id, YEAR(b.broiler_trans_date), MONTH(b.broiler_trans_date)) as pfd_tbl,
+
+        (SELECT SUM(b.broiler_budget_qty) as hr, b.broiler_trans_date, d.bc_name FROM `broiler_trans_tbl` `a`
+         JOIN `broiler_trans_dtl_tbl` `b` ON `a`.`broiler_trans_id` = `b`.`broiler_trans_id`
+         AND `a`.`broiler_trans_status` = 3
+         JOIN `broiler_subgroup_tbl` `c` ON `a`.`broiler_subgroup_id` = `c`.`broiler_subgroup_id`
+         AND `c`.`broiler_subgroup_name` = 'HR' JOIN `bc_tbl` `d` ON `a`.`bc_id` = `d`.`bc_id` AND d.bc_id = bc
+         AND b.broiler_trans_date = harvest_date
+         GROUP BY a.bc_id, YEAR(b.broiler_trans_date), MONTH(b.broiler_trans_date)
+        ) as hr_tbl 
+            
+WHERE doc_tbl.broiler_trans_date = pfd_tbl.broiler_trans_date AND doc_tbl.bc_name = pfd_tbl.bc_name AND pfd_tbl.broiler_trans_date = hr_tbl.broiler_trans_date AND pfd_tbl.bc_name = hr_tbl.bc_name;
+
+SELECT IFNULL(SUM(c.sales_det_qty), 0) as live_sales_qty, 
+    
+    
+    IFNULL((
+        SELECT y.sales_live_alw_det_value
+        FROM sales_live_alw_tbl x, sales_live_alw_detail_tbl y
+        WHERE x.sales_live_alw_id = y.sales_live_alw_id AND x.sales_live_alw_status = 1 AND y.sales_live_alw_det_status = 1
+        AND x.bc_id = bc AND y.sales_live_alw_det_date = harvest_date),0
+    ) as alw_live,
+    
+    
+    IFNULL((
+        SELECT b.broiler_budget_qty
+        FROM broiler_trans_tbl a, broiler_trans_dtl_tbl b, broiler_subgroup_tbl c, bc_tbl d
+        WHERE a.broiler_trans_id = b.broiler_trans_id AND a.broiler_subgroup_id = c.broiler_subgroup_id AND a.bc_id = d.bc_id
+        AND a.broiler_trans_status = 3 AND c.broiler_subgroup_name = "ALW" AND d.bc_id = bc AND b.broiler_trans_date = harvest_date),0
+    ) as alw_broiler
+INTO _live, _alw_live_sales, _alw_broiler
+    
+FROM sales_tbl a, sales_item_tbl b, sales_details_tbl c, material_tbl d, outlet_tbl e, bc_tbl f
+WHERE a.sales_id = b.sales_id AND b.sales_item_id = c.sales_item_id AND b.material_id = d.material_id AND a.outlet_id = e.outlet_id AND e.bc_id = f.bc_id AND a.sales_status = 1 AND b.sales_item_status = 1 AND c.sales_det_status = 1 AND c.sales_det_date = harvest_date AND f.bc_id = bc AND d.material_desc = 'LIVE BROILER';
+
+SELECT IFNULL(SUM(a.trans_qty), 0)
+INTO _broiler_cost
+FROM broiler_cost_summary_tbl a, broiler_group_tbl b, bc_tbl c WHERE a.broiler_group_id = b.broiler_group_id AND a.bc_id = c.bc_id AND c.bc_id = bc AND a.trans_date = harvest_date;
+
+
+SELECT IFNULL(b.rate, 0)
+INTO _doa_daa
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, services_tbl c, services_group_tbl d WHERE c.service_group_id = d.service_group_id AND a.prod_trans_id =  b.prod_trans_id AND b.article_id = c.service_id AND b.prod_trans_dtl_date = harvest_date AND a.prod_trans_status = 3 AND b.article_type_id = 2 AND a.bc_id = bc AND c.service_desc =  "DOA/DAA";
+
+
+SELECT IFNULL(b.rate, 0)
+INTO _emaciated
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, services_tbl c, services_group_tbl d WHERE c.service_group_id = d.service_group_id AND a.prod_trans_id =  b.prod_trans_id AND b.article_id = c.service_id AND b.prod_trans_dtl_date = harvest_date AND a.prod_trans_status = 3 AND b.article_type_id = 2 AND a.bc_id = bc AND c.service_desc =  "Emaciated Birds/Others";
+
+
+SELECT IFNULL(b.rate, 0)
+INTO _production_yield
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, services_tbl c, services_group_tbl d WHERE c.service_group_id = d.service_group_id AND a.prod_trans_id =  b.prod_trans_id AND b.article_id = c.service_id AND b.prod_trans_dtl_date = harvest_date AND a.prod_trans_status = 3 AND b.article_type_id = 2 AND a.bc_id = bc AND c.service_desc =  "Production Yield";
+
+SET _total_heads = _harvest - _live;
+SET _broiler_kg = _harvest * _alw_broiler;
+SET _live_sales_kg = _live * _alw_live_sales;
+SET _production_kg = _broiler_kg - _live_sales_kg;
+SET _production_based_kg = _broiler_kg - _live_sales_kg;
+
+SET _test = CONCAT(_test, ' | ', 'Production KGS: ', _production_kg);
+SET _test = CONCAT(_test, ' | ', 'Production HDS: ', _total_heads);
+
+SET _total_heads = _total_heads - (_total_heads * (_doa_daa)/100);
+SET _total_heads = _total_heads - (_total_heads * (_emaciated/100));
+SET _production_kg = _production_kg * (_production_yield/100);
+SET _total_live_broiler_amount = (_broiler_kg - _live_sales_kg) * _broiler_cost;
+
+SET _test = CONCAT(_test, ' | ', 'Live Sales: ', _live);
+SET _test = CONCAT(_test, ' | ', 'Harvest: ', _harvest);
+
+SET _test = CONCAT(_test, ' | ', 'Broiler Amount: ', _total_live_broiler_amount);
+
+
+
+    BEGIN
+        DECLARE done INT DEFAULT FALSE;
+        DECLARE cost_rec CURSOR FOR SELECT e.material_desc, IFNULL(b.rate,0), IFNULL(b.cost, 0) FROM prod_trans_tbl a, prod_trans_dtl_tbl b, material_tbl c, component_type_tbl d, material_tbl e WHERE a.prod_trans_id = b.prod_trans_id AND a.prod_id = c.material_id AND b.component_type_id = d.component_type_id AND b.article_id = e.material_id AND a.prod_trans_status = 3 AND a.bc_id = bc AND d.component_type = "COST RECOVERY" AND a.prod_id=354 AND b.prod_trans_dtl_date = harvest_date;
+        DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+        OPEN cost_rec;
+        getscostrec: LOOP
+          FETCH cost_rec INTO _components, _rate, _cost;
+            IF done = 1 THEN
+              LEAVE getscostrec;
+            END IF;
+
+            IF _components = 'BOUNTY GIZZARD ' THEN
+                SET _cost_rec_gizzard = ((_rate/100) * _production_based_kg);
+
+            ELSEIF _components = 'BOUNTY LIVER 1KG - FRESH' THEN
+                SET _cost_rec_liver = ((_rate/100) * _production_based_kg);
+
+            END IF;
+
+            SET _cost_rec_kg = ((_rate/100) * _production_based_kg);
+            SET _total_cost_rec = _total_cost_rec + (_cost_rec_kg * _cost);
+            SET _test = CONCAT(_test, ' | ', _components, ' - ', '(', _cost_rec_kg ,')', _cost_rec_kg * _cost);
+        
+        END LOOP getscostrec;
+        CLOSE cost_rec;
+    END;
+   
+
+    BEGIN
+        DECLARE _rate DECIMAL(11,3) DEFAULT 0;
+        DECLARE _cost DECIMAL(11,3) DEFAULT 0;
+        DECLARE _amount_type DECIMAL(11,3) DEFAULT 0;
+        DECLARE _components VARCHAR(50);
+        DECLARE _material VARCHAR(50);
+        DECLARE done INT DEFAULT FALSE;
+        DECLARE cost_others CURSOR FOR SELECT e.material_desc, d.component_type, b.amount_type_id, b.rate, b.cost FROM prod_trans_tbl a, prod_trans_dtl_tbl b, material_tbl c, component_type_tbl d, material_tbl e WHERE a.prod_trans_id = b.prod_trans_id AND a.prod_id = c.material_id AND b.component_type_id = d.component_type_id AND b.article_id = e.material_id AND a.prod_trans_status = 3 AND a.bc_id = bc AND b.article_type_id = 1 AND d.component_type IN ("Packaging", "Conversion Cost") AND b.prod_trans_dtl_date = harvest_date AND a.process_type_id = 1
+
+    UNION
+
+    SELECT e.service_desc, d.component_type, b.amount_type_id, b.rate, b.cost FROM prod_trans_tbl a, prod_trans_dtl_tbl b, material_tbl c, component_type_tbl d, services_tbl e WHERE a.prod_trans_id = b.prod_trans_id AND a.prod_id = c.material_id AND b.component_type_id = d.component_type_id AND b.article_id = e.service_id AND a.prod_trans_status = 3 AND a.bc_id = bc AND b.article_type_id = 2 AND d.component_type IN ("Packaging", "Conversion Cost") AND b.prod_trans_dtl_date = harvest_date AND a.process_type_id = 1;
+        DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+        OPEN cost_others;
+            getscostothers: LOOP
+              FETCH cost_others INTO _material, _components, _amount_type, _rate, _cost;
+                IF done = 1 THEN
+                  LEAVE getscostothers;
+                END IF;
+                
+                IF _components = 'CONVERSION COST' THEN
+                    IF _material = 'NMIC FEES ON HDS' THEN
+                        SET _total_cost_others = _total_cost_others + (_rate * _total_heads);
+                        SET _counter = CONCAT(_counter, ' | ', _material, ' - ', '(', _rate ,' / ', _total_heads, ') ', (_rate * _total_heads));
+                    ELSEIF _material = 'NMIC FEES ON KGS' THEN
+                        SET _total_cost_others = _total_cost_others + (_rate * _production_kg);
+                        SET _counter = CONCAT(_counter, ' | ', _material, ' - ', '(', _rate ,' / ', _production_kg, ') ', (_rate * _production_kg));
+                    ELSE
+                        SET _total_cost_others = _total_cost_others + (_rate * _total_heads);
+                        SET _counter = CONCAT(_counter, ' | ', _material, ' - ', '(', _rate ,' / ', _total_heads, ') ', (_rate * _total_heads));
+                    END IF;
+                    
+                    
+                    
+                ELSEIF _components = 'PACKAGING' THEN
+                    IF _material = 'GIZZARD PLASTIC' THEN
+                        SET _total_cost_others = _total_cost_others + (_cost_rec_gizzard * _cost);
+                        SET _counter = CONCAT(_counter, ' | ', _material, ' - ', '(', _cost_rec_gizzard ,' / ', _cost, ') ', (_cost_rec_gizzard * _cost));
+                    ELSEIF _material = 'LIVER PLASTIC' THEN
+                        SET _total_cost_others = _total_cost_others + (_cost_rec_liver * _cost);
+                        SET _counter = CONCAT(_counter, ' | ', _material, ' - ', '(', _cost_rec_liver ,' / ', _cost, ') ', (_cost_rec_liver * _cost));
+                    ELSEIF _material = 'UNBRANDED 12X14 PLASTIC' THEN
+                        SET _total_cost_others = _total_cost_others + ((_total_heads * _rate) * _cost);
+                        SET _counter = CONCAT(_counter, ' | ', _material, ' - ', '(', _total_heads ,' / ', _cost, ') ', ((_total_heads * _rate) * _cost));
+                    ELSE
+                        IF _rate != 0 THEN
+                            SET _total_cost_others = _total_cost_others + ((_total_heads / _rate) * _cost);
+                            SET _counter = CONCAT(_counter, ' | ', _material, ' - ', '(', _total_heads ,' / ', _rate, _cost, ') ', ((_total_heads / _rate) * _cost));
+                        END IF;
+                    END IF;
+                END IF;
+                
+            
+            END LOOP getscostothers;
+        CLOSE cost_others;
+        
+    END;
+    
+    
+    SET total_qty = _total_heads;
+    SET total_kgs = _production_kg;
+    
+    SET ave_wt = _production_kg / _total_heads;
+    SET total_cost_amount = (_total_cost_others + _total_live_broiler_amount) - _total_cost_rec;
+    SET cost_per_head = total_cost_amount / total_kgs;
+    SET live_alw = _alw_live_sales;
+    SET live_cost = _broiler_cost;
+    
+END

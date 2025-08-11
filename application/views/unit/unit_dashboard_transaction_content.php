@@ -1,0 +1,106 @@
+			
+			<div class="col-lg-12" id="content">
+				<div id="breadcrumb-div">
+					<ul class="breadcrumb">
+					    <li><a href="<?=base_url('admin')?>"><span class="glyphicon glyphicon-home"></span>&nbsp;Dashboard</a></li>
+					    <li class="active">Materials</li>
+					</ul>
+				</div>
+
+				<?php
+					if($this->session->flashdata('message') != "" ){
+						echo $this->session->flashdata('message');
+					}
+				?>
+
+
+				<ul class="nav nav-tabs">
+				    <li class="active"><a data-toggle="tab" href="#unit-tab" class="tab-letter">Unit</a></li>
+  				</ul>
+
+  				<div class="tab-content">
+
+					<div id="unit-tab" class="tab-pane fade in active">
+    					<br>
+						
+						<div id="add-btn">
+							<a href="" class="btn btn-info btn-xs" data-toggle="modal" data-backdrop="static" data-target="#modal-dashboard-unit-trans">+ Process Unit Dashboard</a><br />
+
+							<div id="modal-dashboard-unit-trans" class="modal fade" role="dialog">
+								<div class="modal-dialog modal-sm">
+								    <div class="modal-content">
+								    	<div class="modal-header">
+								        	<button type="button" class="close" data-dismiss="modal">&times;</button>
+								       		<strong>Process Unit Dashboard</strong>
+								      	</div>
+
+								      	<div class="modal-body">
+								        	<form method="POST" action="<?=base_url('unit/add-unit-trans')?>" enctype="multipart/form-data" id="upload-materials">
+
+								        		<input type="hidden" name="year" value="<?=$year?>">
+
+								        		<div class="text-center">
+								        			<h5><strong>Are you sure you want to Queue Report?</strong></h5>
+								        		</div>
+
+								        		<div class="text-center">
+								        			<button type="submit" class="btn btn-info btn-sm">Yes</button>&nbsp;&nbsp;<button type="button" class="btn btn-danger btn-sm" data-dismiss="modal">No</button>
+								        		</div>
+								        	</form>
+								      	</div>
+								    </div>
+								</div>
+							</div>
+						</div>
+
+						<table class="table table-hover" id="tbl-dashboard-unit">
+							<thead>
+								<tr>
+									<th>Unit</th>
+									<th>Year</th>
+									<th>Process By</th>
+									<th>Started</th>
+									<th>End</th>
+									<th>Status</th>
+									<th>Action</th>
+								</tr>
+							</thead>
+							<tbody>
+
+								<?php
+									foreach($trans_unit as $row_trans_unit):
+										$action = '';
+										if($row_trans_unit->dashboard_trans_status_id == 1){
+			                                $badge = '<span class="badge badge-warning">QUEUE</span>';
+			                                $action = '<a href="" class="text-danger terminate-bc-trans" data-id="' . encode($row_trans_unit->dashboard_unit_trans_id) . '"><i class="glyphicon glyphicon-remove"></i></a>';
+			                            }elseif($row_trans_unit->dashboard_trans_status_id == 2){
+			                                $badge = '<span class="badge badge-info">PROCESSING</span>';
+			                                $action = '<a href="" class="text-danger terminate-bc-trans" data-id="' . encode($row_trans_unit->dashboard_unit_trans_id) . '"><i class="glyphicon glyphicon-remove"></i></a>';
+			                            }elseif($row_trans_unit->dashboard_trans_status_id == 3){
+			                                $badge = '<span class="badge badge-success">COMPLETED</span>';
+			                                $action = '<a href="' . base_url('dashboard/view-unit-pdf/' . encode($row_trans_unit->dashboard_unit_trans_id)) . '" target="_blank" class="text-info"><i class="glyphicon glyphicon-file"></i></a>';
+			                            }elseif($row_trans_unit->dashboard_trans_status_id == 4){
+			                                $badge = '<span class="badge badge-warning">TERMINATING</span>';
+			                                $action = '';
+			                            }elseif($row_trans_unit->dashboard_trans_status_id == 5){
+			                                $badge = '<span class="badge badge-danger">TERMINATED</span>';
+			                                $action = '';
+			                            }
+								?>
+
+									<tr>
+										<td><?=$row_trans_unit->cost_center_desc?></td>
+										<td><?=$row_trans_unit->dashboard_unit_trans_year?></td>
+										<td><?=$row_trans_unit->user_lname . ', ' . $row_trans_unit->user_fname?></td>
+										<td><?=$row_trans_unit->dashboard_unit_trans_added?></td>
+										<td><?=$row_trans_unit->dashboard_unit_trans_end?></td>
+										<td><?=$badge?></td>
+										<td><?=$action?></td>
+									</tr>
+
+								<?php endforeach;?>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>

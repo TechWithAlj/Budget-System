@@ -1,0 +1,74 @@
+SELECT * FROM (SELECT @r as _id,
+	@mat := IFNULL(
+		(SELECT d.material_desc
+    	FROM prod_trans_tbl a, prod_trans_dtl_tbl b, component_type_tbl c, material_tbl d
+   		WHERE a.prod_trans_id = b.prod_trans_id AND b.component_type_id = c.component_type_id
+        AND a.prod_id=_id AND a.prod_id = d.material_id AND (b.component_type_id = 21
+		OR b.component_type_id = 2) AND a.prod_trans_status = 3
+        AND a.bc_id = @bc AND b.prod_trans_dtl_date = @prod_date
+        )
+	, '') as mat_desc,
+               
+    @components :=(
+		SELECT c.component_type
+    	FROM prod_trans_tbl a, prod_trans_dtl_tbl b, component_type_tbl c, material_tbl d
+   		WHERE a.prod_trans_id = b.prod_trans_id AND b.component_type_id = c.component_type_id
+        AND a.prod_id=_id AND a.prod_id = d.material_id AND a.prod_trans_status = 3
+        AND (b.component_type_id = 21
+		OR b.component_type_id = 2) AND a.bc_id = @bc
+        AND b.prod_trans_dtl_date = @prod_date
+        
+	) as mat_comp,
+               
+    @process :=(
+		SELECT b.process_type_name
+    	FROM prod_trans_tbl a, process_type_tbl b
+        WHERE a.prod_id=_id AND a.process_type_id = b.process_type_id
+        AND a.prod_trans_status = 3 AND a.bc_id = @bc
+        
+	) as mat_process, 
+	
+	(
+		SELECT @r := b.article_id
+    	FROM prod_trans_tbl a, prod_trans_dtl_tbl b, component_type_tbl c
+   		WHERE a.prod_trans_id = b.prod_trans_id
+        AND b.component_type_id = c.component_type_id
+        AND a.prod_id = _id AND (b.component_type_id = 21 OR b.component_type_id = 2)
+        AND a.prod_trans_status = 3 AND a.bc_id = @bc
+        AND b.prod_trans_dtl_date = @prod_date LIMIT 1
+	) as parent,
+    
+    @l := @l + 1 AS level
+    
+FROM
+	(
+   	SELECT
+    	@r := 82,
+        @l := 1,
+        @bc := 1,
+        @prod_date := '2020-01-01',
+        @brand := 1,
+        @cl := 0,
+        @mat := 'test',
+        @rate := 0,
+        @cost := 0,
+        @process := ''
+	) vars,
+    
+    prod_trans_tbl
+    WHERE @mat != '' HAVING @r != 225
+	
+	
+) as noi_data
+    
+ORDER BY level DESC
+
+
+//Checker for SALES BOM Raw mat details
+
+SELECT a.prod_trans_id, a.process_type_id, c.component_type, d.material_desc, d.material_id, e.material_desc as mat_details
+FROM prod_trans_tbl a, prod_trans_dtl_tbl b, component_type_tbl c, material_tbl d, material_tbl e
+WHERE a.prod_trans_id = b.prod_trans_id AND b.component_type_id = c.component_type_id
+AND a.prod_id= 82 AND a.prod_id = d.material_id AND b.article_id = e.material_id AND b.article_type_id = 1 AND a.prod_trans_status = 3
+AND a.bc_id = 3 AND b.prod_trans_dtl_date = '2020-01-01' AND a.brand_id = 1 AND a.process_type_id = 5
+

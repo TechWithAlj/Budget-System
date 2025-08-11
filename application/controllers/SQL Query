@@ -1,0 +1,304 @@
+SELECT
+    SUM(
+        sales.overall_qty *(sales.price / sales.vat)
+    ) AS net_sales,
+    SUM(sales.overall_qty) AS total_qty,
+    SUM(sales.sales_unit) sales_unit,
+    asp,
+    SUM(sales_commission) AS customer_commission,
+    IF(
+        sales.material_group_name = "DRESSED",
+        "0.000",
+        IF(
+            sales.material_group_name = "LIVE SALES",
+            "1.00",
+            1
+        )
+    ) AS sales_weight,
+    sales.brand_id
+FROM
+    (
+    SELECT
+        f.brand_id,
+        i.material_group_name,
+        c.material_desc,
+        (h.sales_det_qty) AS qty,
+        h.sales_det_asp,
+        IF(c.vat_type_id = 1, 1.12, 1) vat,
+        @total_qty :=(
+            CASE WHEN c.material_group_id = 2 THEN(0.000 * h.sales_det_qty) WHEN c.material_id = 225 THEN(1.00 * h.sales_det_qty) ELSE h.sales_det_qty
+        END
+) AS overall_qty,
+(
+    h.sales_det_asp + IFNULL(
+        (
+        SELECT
+            n.price_adjustment_det_value
+        FROM
+            price_adjustment_tbl m,
+            price_adjustment_details_tbl n
+        WHERE
+            m.price_adjustment_id = n.price_adjustment_id AND m.price_adjustment_status = 1 AND n.price_adjustment_det_status = 1 AND m.material_id = c.material_id AND n.price_adjustment_det_date = h.sales_det_date AND m.bc_id = g.bc_id
+    ),
+    0
+    )
+) - IFNULL(
+    (
+    SELECT
+        Y.sales_tactical_det_price
+    FROM
+        sales_tactical_tbl w,
+        `sales_tactical_item_tbl` X,
+        sales_tactical_details_tbl Y
+    WHERE
+        w.sales_tactical_id = X.sales_tactical_id AND X.sales_tactical_item_id = Y.sales_tactical_item_id AND w.sales_tactical_status = 1 AND X.sales_tactical_item_status = 1 AND Y.sales_tactical_det_status = 1 AND w.outlet_id = d.outlet_id AND X.material_id = c.material_id AND Y.sales_tactical_det_date = h.sales_det_date
+),
+0
+) AS price,
+(
+SELECT
+    IF(
+        z.amount_type_name = "PERCENT",
+        (@total_qty * h.sales_det_asp) *(
+            Y.sales_commission_det_value / 100
+        ),
+        IF(
+            z.amount_type_name = "AMOUNT",
+            @total_qty * Y.sales_commission_det_value,
+            0
+        )
+    )
+FROM
+    sales_commission_tbl X,
+    sales_commission_details_tbl Y,
+    amount_type_tbl z
+WHERE
+    X.sales_commission_id = Y.sales_commission_id AND X.amount_type_id = z.amount_type_id AND X.sales_commission_status = 1 AND Y.sales_commission_det_status = 1 AND X.outlet_id = d.outlet_id AND X.material_id = c.material_id AND Y.sales_commission_det_date = h.sales_det_date
+) AS sales_commission,
+(
+    h.sales_det_qty / j.sales_unit_equivalent
+) AS sales_unit,
+h.sales_det_asp AS asp
+FROM
+    `sales_tbl` `a`
+JOIN
+    `sales_item_tbl` `b`
+ON
+    `a`.`sales_id` = `b`.`sales_id` AND `a`.`sales_status` = 1 AND `b`.`sales_item_status` = 1
+JOIN
+    `material_tbl` `c`
+ON
+    `b`.`material_id` = `c`.`material_id` AND `c`.`material_id` = 82
+JOIN
+    `outlet_tbl` `d`
+ON
+    `a`.`outlet_id` = `d`.`outlet_id`
+JOIN
+    `outlet_brand_tbl` `e`
+ON
+    `d`.`outlet_id` = `e`.`outlet_id` AND `e`.`outlet_brand_status` = 1
+JOIN
+    `brand_tbl` `f`
+ON
+    `e`.`brand_id` = `f`.`brand_id` AND `f`.`brand_id` = 1
+JOIN
+    `bc_tbl` `g`
+ON
+    `d`.`bc_id` = `g`.`bc_id` AND `g`.`bc_id` = 16
+JOIN
+    `sales_details_tbl` `h`
+ON
+    `b`.`sales_item_id` = `h`.`sales_item_id` AND `h`.`sales_det_qty` > 0 AND `h`.`sales_det_date` = "2022-01-01"
+JOIN
+    `material_group_tbl` `i`
+ON
+    `c`.`material_group_id` = `i`.`material_group_id`
+JOIN
+    material_unit_tbl j
+ON
+    c.material_id = j.material_id AND j.material_unit_status = 1
+) AS sales
+
+
+
+
+SELECT a.* FROM comparative_price_tbl a, bc_tbl b WHERE a.bc_id = b.bc_id AND a.comp_price_status = 1 AND b.bc_name = "CENTRAL LUZON" AND a.comp_price_year = 2020 
+
+
+SELECT AVG(comp_price_jan) as jan_price, AVG(comp_price_feb) as feb_price, AVG(comp_price_mar) as mar_price, AVG(comp_price_apr) as apr_price, AVG(comp_price_may) as may_price, AVG(comp_price_jun) as jun_price, AVG(comp_price_jul) as jul_price, AVG(comp_price_aug) as aug_price, AVG(comp_price_sep) as sep_price, AVG(comp_price_oct) as oct_price, AVG(comp_price_nov) as nov_price, AVG(comp_price_dec) as dec_price FROM `comparative_price_tbl` WHERE `comp_price_product` = '5 PC' AND `comp_price_segment` = 'RSL' AND `comp_price_year` = 2020 AND `bc_id` = 2 AND `comp_price_status` = 1 
+
+
+SELECT a.* FROM comparative_net_sales_tbl a, bc_tbl b WHERE a.bc_id = b.bc_id AND a.comp_net_sales_status = 1 AND b.bc_name = "DAVAO" 
+
+//Sales Mix
+
+SELECT
+    `j`.`report_sales_mix_name`,
+    `e`.`sales_unit_equivalent` AS `sales_unit`,
+    SUM(
+        IF(
+            d.material_code = "9100100",
+            IFNULL(
+                (
+                SELECT
+                    Y.sales_live_alw_det_value
+                FROM
+                    sales_live_alw_tbl X,
+                    sales_live_alw_detail_tbl Y
+                WHERE
+                    X.sales_live_alw_id = Y.sales_live_alw_id AND X.bc_id = 17 AND X.sales_live_alw_status = 1 AND Y.sales_live_alw_det_status = 1 AND X.sales_live_alw_year = 2022 AND Y.sales_live_alw_det_date = c.sales_det_date
+            ),
+            1
+            ) * sales_det_qty,
+            c.sales_det_qty
+        ) *(
+            c.sales_det_asp - IFNULL(
+                (
+                SELECT
+                    z.sales_tactical_det_price
+                FROM
+                    sales_tactical_tbl X,
+                    `sales_tactical_item_tbl` Y,
+                    sales_tactical_details_tbl z
+                WHERE
+                    X.sales_tactical_id = Y.sales_tactical_id AND Y.sales_tactical_item_id = z.sales_tactical_item_id AND f.outlet_id = X.outlet_id AND Y.material_id = e.material_id AND c.sales_det_date = z.sales_tactical_det_date AND X.sales_tactical_status = 1 AND Y.sales_tactical_item_status = 1 AND z.sales_tactical_det_status = 1 AND YEAR(X.sales_tactical_year) = 2022
+            ),
+            0
+            )
+        )
+    ) AS total_sales_mix,
+    IFNULL(
+        (
+        SELECT
+            SUM(X.sales_mix_perc) AS total_sales_mix1
+        FROM
+            comparative_net_sales_tbl X
+        WHERE
+            j.report_sales_mix_name = X.segment AND X.comp_net_sales_status = 1 AND YEAR(X.trans_year) = 2021 AND X.bc_id = 17
+    ),
+    0
+    ) AS total_sales_mix1,
+    IFNULL(
+        (
+        SELECT
+            SUM(X.sales_mix_perc) AS total_sales_mix1
+        FROM
+            comparative_net_sales_tbl X
+        WHERE
+            j.report_sales_mix_name = X.segment AND X.comp_net_sales_status = 1 AND YEAR(X.trans_year) = 2020 AND X.bc_id = 17
+    ),
+    0
+    ) AS total_sales_mix2
+FROM
+    `sales_tbl` `a`
+JOIN
+    `sales_item_tbl` `b`
+ON
+    `a`.`sales_id` = `b`.`sales_id` AND `a`.`sales_status` = 1 AND `b`.`sales_item_status` AND `a`.`sales_year` = 2022
+JOIN
+    `sales_details_tbl` `c`
+ON
+    `b`.`sales_item_id` = `c`.`sales_item_id` AND `c`.`sales_det_status` = 1
+JOIN
+    `material_tbl` `d`
+ON
+    `b`.`material_id` = `d`.`material_id`
+JOIN
+    `material_unit_tbl` `e`
+ON
+    `d`.`material_id` = `e`.`material_id` AND `e`.`material_unit_status` = 1
+JOIN
+    `outlet_tbl` `f`
+ON
+    `a`.`outlet_id` = `f`.`outlet_id` AND `f`.`bc_id` = 17
+JOIN
+    `outlet_brand_tbl` `g`
+ON
+    `f`.`outlet_id` = `g`.`outlet_id` AND `g`.`outlet_brand_status` = 1
+JOIN
+    `brand_tbl` `h`
+ON
+    `g`.`brand_id` = `h`.`brand_id`
+JOIN
+    `report_sales_mix_brand_tbl` `i`
+ON
+    `h`.`brand_id` = `i`.`brand_id` AND `i`.`report_sales_mix_brand_status` = 1
+JOIN
+    `report_sales_mix_tbl` `j`
+ON
+    `i`.`report_sales_mix_id` = `j`.`report_sales_mix_id`
+JOIN
+    `material_group_tbl` `k`
+ON
+    `d`.`material_group_id` = `k`.`material_group_id` AND `k`.`material_group_name` != 'BY-PRODUCTS'
+GROUP BY
+    `j`.`report_sales_mix_id`
+
+
+
+
+//Brand Summary
+SELECT * FROM dashboard_brand_summary_tbl a, bc_tbl b WHERE a.bc_id = b.bc_id AND b.bc_name = "CAGAYAN DE ORO" AND a.dashboard_brand_summary_status = 1
+
+//Remove Brand Summary
+UPDATE dashboard_brand_summary_tbl SET dashboard_brand_summary_status = 0 WHERE dashboard_brand_summary_id IN (SELECT x.dashboard_brand_summary_id FROM (SELECT a.dashboard_brand_summary_id FROM dashboard_brand_summary_tbl a, bc_tbl b WHERE a.bc_id = b.bc_id AND b.bc_name = "CAGAYAN DE ORO" AND a.dashboard_brand_summary_status = 1) x)
+
+//Remove Period Cost Summary
+SELECT * FROM dashboard_opex_tbl a, cost_center_tbl b WHERE a.cost_center_id = b.cost_center_id AND b.cost_center_desc = "DUMAGUETE" AND a.dashboard_opex_status = 3 ORDER BY a.dashboard_opex_added DESC
+
+//Period Cost Summary
+UPDATE dashboard_opex_tbl SET dashboard_opex_status = 0 WHERE dashboard_opex_id IN (SELECT x.dashboard_opex_id FROM (SELECT a.dashboard_opex_id FROM dashboard_opex_tbl a, cost_center_tbl b WHERE a.cost_center_id = b.cost_center_id AND b.cost_center_desc = "ROXAS" AND a.dashboard_opex_status = 1) as x)
+
+//OPEX Comparative
+SELECT b.bc_name, c.cost_center_code, c.cost_center_desc, e.gl_group_name, d.gl_sub_name, a.cost FROM comparative_opex_gl_tbl a, bc_tbl b, cost_center_tbl c, gl_subgroup_tbl d, gl_group_tbl e WHERE a.bc_id = b.bc_id AND a.cost_center_id = c.cost_center_id AND a.gl_sub_id = d.gl_sub_id AND d.gl_group_id = e.gl_group_id AND a.comp_opex_gl_status = 1 AND YEAR(a.trans_year) = 2020 AND b.bc_name = "CEBU" 
+
+
+//CAPEX Comparative
+SELECT b.bc_name, c.cost_center_code, c.cost_center_desc, d.ag_name, a.comp_capex_val FROM comparative_capex_tbl a, bc_tbl b, cost_center_tbl c, asset_group_tbl d WHERE a.bc_id = b.bc_id AND a.cost_center_id = c.cost_center_id AND a.ag_id = d.ag_id AND a.comp_capex_year = 2020 AND b.bc_name = "BACOLOD" 
+
+
+//CAPEX Budget With comparative
+SELECT `d`.`ag_id`, `d`.`ag_name`, `c`.`asg_name`, SUM(a.capex_qty) total_qty, `f`.`capex_price`, SUM(a.capex_qty * f.capex_price) as capex_total, (SELECT SUM(x.comp_capex_val) FROM comparative_capex_tbl x WHERE d.ag_id = x.ag_id AND x.bc_id = 8 AND x.comp_capex_status = 1 AND x.comp_capex_year = 2021) as capex_total1, (SELECT SUM(x.comp_capex_val) FROM comparative_capex_tbl x WHERE d.ag_id = x.ag_id AND x.bc_id = 8 AND x.comp_capex_status = 1 AND x.comp_capex_year = 2020) as capex_total2 FROM `asset_group_transaction_details_tbl` `a` JOIN `asset_group_transaction_item_tbl` `f` ON `a`.`ag_trans_item_id` = `f`.`ag_trans_item_id` AND `f`.`ag_trans_item_status` = 1 JOIN `asset_group_transaction_tbl` `b` ON `f`.`ag_trans_id`=`b`.`ag_trans_id` AND `b`.`ag_trans_status`=1 AND `a`.`ag_trans_det_status`=1 AND `b`.`ag_trans_budget_year` = 2022 JOIN `asset_subgroup_tbl` `c` ON `f`.`asg_id`=`c`.`asg_id` JOIN `asset_group_tbl` `d` ON `c`.`ag_id` = `d`.`ag_id` JOIN `cost_center_tbl` `e` ON `f`.`cost_center_id` = `e`.`cost_center_id` AND `e`.`cost_center_id` AND `e`.`parent_id`=15 GROUP BY `c`.`asg_id` ORDER BY `d`.`ag_name`
+
+
+//Roxas Error
+
+SELECT * FROM `ext_prod_trans_tbl` `a` JOIN `ext_prod_trans_dtl_tbl` `b` ON `a`.`ext_prod_trans_id` = `b`.`ext_prod_trans_id` AND `a`.`ext_prod_trans_status` = 1 AND `b`.`ext_prod_trans_dtl_status` = 1 AND `a`.`bc_id` = 14 AND `b`.`trans_dtl_date` = "2022-01-01" AND `a`.`material_id` = 42
+
+SELECT
+    f.cost_center_desc,
+    d.asg_name AS asset_group,
+    e.ag_gl_code,
+    SUM(
+        (
+            b.capex_price / b.capex_lifespan
+        ) *(13 - MONTH(c.capex_budget_date)) * c.capex_qty
+    ) AS total,
+    c.capex_budget_date AS budget_date,
+    (SELECT x1.gl_sub_id FROM gl_subgroup_tbl x1 WHERE x1.gl_code = e.ag_gl_code AND x1.gl_sub_status = 1 LIMIT 1)as gl_sub_id,
+    (SELECT x1.gl_sub_id FROM gl_subgroup_tbl x1 WHERE x1.gl_code = e.ag_gl_code AND x1.gl_sub_status = 1 LIMIT 1)as gl_sub_name,
+    i.cost_center_group_id,
+    f.cost_center_id,
+    f.cost_center_type_id,
+    (
+    SELECT
+        X.cost_center_group_name
+    FROM
+        cost_center_group_tbl X
+    WHERE
+        X.cost_center_group_id = i.cost_center_group_id
+) AS cost_center_group_name
+FROM
+    asset_group_transaction_tbl a,
+    asset_group_transaction_item_tbl b,
+    asset_group_transaction_details_tbl c,
+    asset_subgroup_tbl d,
+    asset_group_tbl e,
+    cost_center_tbl f,
+    transaction_type_tbl g,
+    cost_center_group_tbl i
+WHERE
+    a.ag_trans_id = b.ag_trans_id AND b.ag_trans_item_id = c.ag_trans_item_id AND b.asg_id = d.asg_id AND d.ag_id = e.ag_id AND b.cost_center_id = f.cost_center_id AND a.trans_type_id = g.trans_type_id AND f.cost_center_group_id = i.cost_center_group_id AND g.trans_type_id = 1 AND a.ag_trans_status = 1 AND b.ag_trans_item_status = 1 AND c.ag_trans_det_status = 1 AND f.parent_id = 15 AND YEAR(c.capex_budget_date) = 2022
+GROUP BY
+    f.cost_center_id,
+    gl_sub_id
