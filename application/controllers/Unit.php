@@ -425,11 +425,13 @@ class Unit extends CI_Controller {
 		$arr_gl[$depre]['asset'] = $depre;
 		$arr_gl[$depre]['color'] = '#f0cee4';
 		$arr_gl[$depre]['amount'] = array();
-		
-		for($a = 0; $a < 12; $a++){
 
-			$total_depreciation = $get_depreciation['info'][$a+1]['amount'];
-			array_push($arr_gl[$depre]['amount'], $total_depreciation);
+		for($a = 0; $a < 12; $a++){
+			$total_depreciation = 0;
+			if (isset($get_depreciation['info'][$a+1]) && is_array($get_depreciation['info'][$a+1]) && isset($get_depreciation['info'][$a+1]['amount'])) {
+				$total_depreciation = $get_depreciation['info'][$a+1]['amount'];
+			}
+			$arr_gl[$depre]['amount'][] = $total_depreciation;
 		}
 
 		$data['result'] = 1;
@@ -4224,6 +4226,8 @@ class Unit extends CI_Controller {
 						
 						$id = clean_data($this->input->post('id'));
 						$asg_cost_center = clean_data($this->input->post('cost_center'));
+						$capex_type = clean_data($this->input->post('capex_type'));
+						$capex_category = clean_data($this->input->post('capex_category'));
 						$capex = clean_data($this->input->post('capex'));
 						$count = 0;
 						foreach($id as $row){
@@ -4238,6 +4242,8 @@ class Unit extends CI_Controller {
 							if($check_asg_id == TRUE){
 								$asset_price = $check_asg_id['info']->asg_price;
 								$asset_lifespan = $check_asg_id['info']->asg_lifespan;
+								$capex_type_id = decode($capex_type[$count]);
+								$capex_category_id = decode($capex_category[$count]);
 								$asg_cost_center_id = decode($asg_cost_center[$count]);
 								$check_asg_cc = $this->admin->check_data('cost_center_tbl', array('cost_center_id' => $asg_cost_center_id));
 								if($check_asg_cc == TRUE){
@@ -4262,6 +4268,8 @@ class Unit extends CI_Controller {
 											'ag_trans_id' => $ag_trans_id,
 											'asg_id' => $asg_id,
 											'cost_center_id' => $asg_cost_center_id,
+											'capex_type_id' => $capex_type_id,
+											'capex_category_id' => $capex_category_id,
 											'user_id' => $user_id,
 											'capex_price' => $asset_price,
 											'capex_lifespan' => $asset_lifespan,
@@ -4641,6 +4649,23 @@ class Unit extends CI_Controller {
 		}
 
 		$cost_center_data .= '</select>';
+				
+		$get_capex_type = $this->admin->get_data('capex_type_tbl', array('capex_type_status' => 1));
+		$get_capex_category = $this->admin->get_data('capex_category_tbl', array('capex_category_status' => 1));
+
+		$capex_type_data = '<select name="capex_type[]" class="form-control input-sm capex-cost-center" style="width: 200px;">';
+		$capex_type_data .= '<option value="">Select capex type...</option>';
+		foreach($get_capex_type as $row){
+			$capex_type_data .= '<option value="' . encode($row->capex_type_id) . '">' . $row->capex_type_name . '</option>';
+		}
+		$capex_type_data .= '</select>';
+
+		$capex_category_data = '<select name="capex_category[]" class="form-control input-sm capex-cost-center" style="width: 200px;">';
+		$capex_category_data .= '<option value="">Select capex category...</option>';
+		foreach($get_capex_category as $row){
+			$capex_category_data .= '<option value="' . encode($row->capex_category_id) . '">' . $row->capex_category_name . '</option>';
+		}
+		$capex_category_data .= '</select>';
 
 		$get_assets = $this->admin->get_data('asset_subgroup_tbl', array('ag_id' => $ag_id, 'asg_status' => 1));
 		$asset = '';
@@ -4649,6 +4674,8 @@ class Unit extends CI_Controller {
 			$asset .= '<td width=""><a href="#" class="remove-asg"><i class="fa fa-remove"></i></a>&nbsp;&nbsp;&nbsp;<a href="" class="add-asset-sub" data-id="' . encode($row->asg_id) . '"><i class="fa fa-plus"></i></a>&nbsp;&nbsp;<a href="#" class="show-slider-capex"><span class="fa fa-sliders"></span></a></td>';
 			$asset .= '<td style="width:20px;">' . $row->asg_name .'</td>';
 			$asset .= '<td width="7%"><div class="form-group">' . $cost_center_data . '</div></td>';
+			$asset .= '<td width="7%"><div class="form-group">' . $capex_type_data . '</div></td>';
+			$asset .= '<td width="7%"><div class="form-group">' . $capex_category_data . '</div></td>';
 			$asset .= '<td class="text-right" width="3%">' . number_format($row->asg_price, 2) . '</td>';
 			$asset .= '<td class="text-right" width="3%"><label class="capex-total-price">0</label></td>';
 			$asset .= '<td class="text-right" width="3%"><label class="capex-total-qty">0</label></td>';
@@ -4672,6 +4699,8 @@ class Unit extends CI_Controller {
 				<th class="text-center" style="background: #03A9F4;color: #fff;"></th>
 				<th style="background: #03A9F4;color: #fff; width:20px;">Asset</th>
 				<th width="7%" style="background: #03A9F4;color: #fff;">Cost Center</th>
+				<th width="7%" style="background: #03A9F4;color: #fff;">Type of CAPEX</th>
+				<th width="7%" style="background: #03A9F4;color: #fff;">Maintenance Category</th>
 				<th class="text-center" width="3%" style="background: #03A9F4;color: #fff;">Price</th>
 				<th class="text-center" width="3%">Total Price</th>
 				<th class="text-center" width="3%">Total Qty</th>
@@ -4936,6 +4965,8 @@ class Unit extends CI_Controller {
 							if($insert_capex_trans == TRUE){
 								$id = clean_data($this->input->post('id'));
 								$asg_cost_center = clean_data($this->input->post('cost_center'));
+								$capex_type = clean_data($this->input->post('capex_type'));
+								$capex_category = clean_data($this->input->post('capex_category'));
 								$capex = clean_data($this->input->post('capex'));
 								$count = 0;
 								foreach($id as $row){
@@ -4950,6 +4981,8 @@ class Unit extends CI_Controller {
 									if($check_asg_id == TRUE){
 										$asset_price = $check_asg_id['info']->asg_price;
 										$asset_lifespan = $check_asg_id['info']->asg_lifespan;
+										$capex_type_id = decode($capex_type[$count]);
+										$capex_category_id = decode($capex_category[$count]);
 										$asg_cost_center_id = decode($asg_cost_center[$count]);
 										$check_asg_cc = $this->admin->check_data('cost_center_tbl', array('cost_center_id' => $asg_cost_center_id));
 										if($check_asg_cc == TRUE){
@@ -4974,6 +5007,8 @@ class Unit extends CI_Controller {
 													'ag_trans_id' => $ag_trans_id,
 													'asg_id' => $asg_id,
 													'cost_center_id' => $asg_cost_center_id,
+													'capex_type_id' => $capex_type_id,
+													'capex_category_id' => $capex_category_id,
 													'user_id' => $user_id,
 													'capex_price' => $asset_price,
 													'capex_lifespan' => $asset_lifespan,
@@ -5216,7 +5251,7 @@ class Unit extends CI_Controller {
 				$designated_tbl->asset_group_transaction_item_tbl.' d' => 'a.ag_trans_item_id = d.ag_trans_item_id AND d.ag_trans_item_status = 1'
 			);
 			
-			$data['asset_details'] = $this->admin->get_query('SELECT c.ag_trans_item_id, d.asg_name, g.cost_center_desc, b.capex_price,(SELECT SUM(x.capex_qty) FROM '.$designated_tbl->asset_group_transaction_details_tbl.' x WHERE b.ag_trans_item_id=x.ag_trans_item_id) as total_qty, b.capex_remarks, 
+			$data['asset_details'] = $this->admin->get_query('SELECT c.ag_trans_item_id, d.asg_name, g.cost_center_desc, h.capex_type_name, i.capex_category_name, b.capex_price,(SELECT SUM(x.capex_qty) FROM '.$designated_tbl->asset_group_transaction_details_tbl.' x WHERE b.ag_trans_item_id=x.ag_trans_item_id) as total_qty, b.capex_remarks, 
 
 				(SELECT SUM(x.capex_qty) FROM '.$designated_tbl->asset_group_transaction_details_tbl.' x WHERE b.ag_trans_item_id=x.ag_trans_item_id) as total_qty, b.capex_remarks, 
 				
@@ -5235,7 +5270,7 @@ class Unit extends CI_Controller {
 				(SELECT SUM(x.capex_qty) FROM '.$designated_tbl->asset_group_transaction_details_tbl.' x WHERE b.ag_trans_item_id=x.ag_trans_item_id AND MONTH(x.capex_budget_date)=11 AND x.ag_trans_det_status=1) as nov,
 				(SELECT SUM(x.capex_qty) FROM '.$designated_tbl->asset_group_transaction_details_tbl.' x WHERE b.ag_trans_item_id=x.ag_trans_item_id AND MONTH(x.capex_budget_date)=12 AND x.ag_trans_det_status=1) as december
 
-				FROM '.$designated_tbl->asset_group_transaction_tbl.' a, '.$designated_tbl->asset_group_transaction_item_tbl.' b, '.$designated_tbl->asset_group_transaction_details_tbl.' c, asset_subgroup_tbl d, asset_group_tbl e, transaction_type_tbl f, cost_center_tbl g  WHERE a.ag_trans_id=b.ag_trans_id AND b.ag_trans_item_id=c.ag_trans_item_id AND b.asg_id=d.asg_id AND d.ag_id=e.ag_id AND b.cost_center_id=g.cost_center_id AND a.trans_type_id=f.trans_type_id AND b.cost_center_id=g.cost_center_id AND a.ag_trans_status=1 AND b.ag_trans_item_status=1 AND c.ag_trans_det_status=1 AND f.trans_type_name="BUDGET" AND a.ag_trans_budget_year = ' . $year . ' AND a.ag_trans_id=' . $ag_trans_id . ' GROUP BY b.ag_trans_item_id');
+				FROM '.$designated_tbl->asset_group_transaction_tbl.' a, '.$designated_tbl->asset_group_transaction_item_tbl.' b, '.$designated_tbl->asset_group_transaction_details_tbl.' c, asset_subgroup_tbl d, asset_group_tbl e, transaction_type_tbl f, cost_center_tbl g, capex_type_tbl h, capex_category_tbl i  WHERE a.ag_trans_id=b.ag_trans_id AND b.ag_trans_item_id=c.ag_trans_item_id AND b.asg_id=d.asg_id AND d.ag_id=e.ag_id AND b.cost_center_id=g.cost_center_id AND a.trans_type_id=f.trans_type_id AND b.cost_center_id=g.cost_center_id AND a.ag_trans_status=1 AND b.ag_trans_item_status=1 AND c.ag_trans_det_status=1 AND b.capex_type_id = h.capex_type_id AND b.capex_category_id = i.capex_category_id AND f.trans_type_name="BUDGET" AND a.ag_trans_budget_year = ' . $year . ' AND a.ag_trans_id=' . $ag_trans_id . ' GROUP BY b.ag_trans_item_id');
 
 			$data['content'] = $this->load->view('unit/unit_capex_view', $data , TRUE);
 			$this->load->view('unit/templates', $data);
@@ -5283,10 +5318,12 @@ class Unit extends CI_Controller {
 				$designated_tbl->asset_group_transaction_tbl.' b' => 'a.ag_trans_id = b.ag_trans_id AND b.ag_trans_status = 1',
 				'cost_center_tbl c' => 'b.cost_center_id = c.cost_center_id AND c.cost_center_status = 1 AND a.ag_trans_item_id = ' . $item_id,
 				'asset_subgroup_tbl d' => 'a.asg_id = d.asg_id',
-				'asset_group_tbl e' => 'd.ag_id = e.ag_id'
+				'asset_group_tbl e' => 'd.ag_id = e.ag_id',
+				'capex_type_tbl f' => 'a.capex_type_id = f.capex_type_id',
+				'capex_category_tbl g' => 'a.capex_category_id = g.capex_category_id'
 			);
 
-			$check_id = $this->admin->check_join($designated_tbl->asset_group_transaction_item_tbl.' a', $join_item, TRUE, FALSE, FALSE, '*, c.cost_center_id as cost_center_main, a.cost_center_id cost_center_item, (SELECT x.rank_id FROM '.$designated_tbl->asset_group_transaction_rank_tbl.' x WHERE a.ag_trans_item_id = x.ag_trans_item_id AND x.ag_trans_rank_status = 1) as rank');
+			$check_id = $this->admin->check_join($designated_tbl->asset_group_transaction_item_tbl.' a', $join_item, TRUE, FALSE, FALSE, '*, c.cost_center_id as cost_center_main, a.cost_center_id cost_center_item, (SELECT x.rank_id FROM '.$designated_tbl->asset_group_transaction_rank_tbl.' x WHERE a.ag_trans_item_id = x.ag_trans_item_id AND x.ag_trans_rank_status = 1) as rank, f.capex_type_id, g.capex_category_id');
 
 			if($check_id['result'] == TRUE){
 				$cost_center_main = $check_id['info']->cost_center_main;
@@ -5296,12 +5333,17 @@ class Unit extends CI_Controller {
 				$ag_name = $check_id['info']->ag_name;
 				$remarks = $check_id['info']->capex_remarks;
 				$rank = $check_id['info']->rank;
+				$capex_type_id = $check_id['info']->capex_type_id;
+				$capex_category_id = $check_id['info']->capex_category_id;
 
 				if($ag_name == 'STORE EQUIPMENT' || $ag_name == 'KITCHEN EQUIPMENT' || $ag_name == 'LEASEHOLD IMPROVEMENTS'){
 					$get_cost_center = $this->admin->get_data('cost_center_tbl', array('parent_id' => $cost_center_main, 'cost_center_type_id' => 8 , 'cost_center_status' => 1));
 				}else{
 					$get_cost_center = $this->admin->get_data('cost_center_tbl', array('parent_id' => $cost_center_main, 'cost_center_type_id !=' => 8, 'cost_center_status' => 1));
 				}
+
+				$get_capex_type = $this->admin->get_data('capex_type_tbl', array('capex_type_status' => 1));
+				$get_capex_category = $this->admin->get_data('capex_category_tbl', array('capex_category_status' => 1));
 
 				$cost_center_data = '';
 				foreach($get_cost_center as $row){
@@ -5310,6 +5352,24 @@ class Unit extends CI_Controller {
 						$select = ' selected';
 					}	
 					$cost_center_data .= '<option value="' . encode($row->cost_center_id) . '"' . $selected . '>' . $row->cost_center_desc . '</option>';
+				}
+				
+				$capex_type_data = '';
+				foreach($get_capex_type as $row){
+					$selected = '';
+					if($row->capex_type_id == $capex_type_id){
+						$selected = ' selected';
+					}
+					$capex_type_data .= '<option value="' . encode($row->capex_type_id) . '"' . $selected . '>' . $row->capex_type_name . '</option>';
+				}
+
+				$capex_category_data = '';
+				foreach($get_capex_category as $row){
+					$selected = '';
+					if($row->capex_category_id == $capex_category_id){
+						$selected = ' selected';
+					}
+					$capex_category_data .= '<option value="' . encode($row->capex_category_id) . '"' . $selected . '>' . $row->capex_category_name . '</option>';
 				}
 
 				$join_get_item = array(
@@ -5359,6 +5419,8 @@ class Unit extends CI_Controller {
 					'price' => $price,
 					'total' => $total_qty,
 					'cost_center' => $cost_center_data,
+					'capex_type' => $capex_type_data,
+					'capex_category' => $capex_category_data,
 					'month' => $month,
 					'rank' => $rank_data,
 					'remarks' => $remarks,
@@ -5380,6 +5442,8 @@ class Unit extends CI_Controller {
 		if($_SERVER['REQUEST_METHOD'] == 'POST'){
 			$id = $this->input->post('id');
 			$cost_center_id = decode(clean_data($this->input->post('cost_center')));
+			$capex_type_id = decode(clean_data($this->input->post('capex_type')));
+			$capex_category_id = decode(clean_data($this->input->post('capex_category')));
 			$capex = clean_data($this->input->post('capex'));
 			$rank = decode(clean_data($this->input->post('rank')));
 			$remarks = clean_data($this->input->post('remarks'));
@@ -5398,11 +5462,21 @@ class Unit extends CI_Controller {
 
 				if($check_item['result'] == TRUE){
 					$cost_center_db = $check_item['info']->cost_center_id;
+					$capex_type_db = $check_item['info']->capex_type_id;
+					$capex_category_db = $check_item['info']->capex_category_id;
 					$ag_trans_id = $check_item['info']->ag_trans_id;
 					$ag_name = $check_item['info']->ag_name;
 
 					if($cost_center_db != $cost_center_id){
 						$update_cost_center = $this->admin->update_data($designated_tbl->asset_group_transaction_item_tbl, array('cost_center_id' => $cost_center_id, 'capex_remarks' => $remarks), array('ag_trans_item_id' => $item_id));
+					}
+					
+					if($capex_type_db != $capex_type_id){
+						$update_cost_center = $this->admin->update_data('asset_group_transaction_item_tbl', array('capex_type_id' => $capex_type_id, 'capex_remarks' => $remarks), array('ag_trans_item_id' => $item_id));
+					}
+
+					if($capex_category_db != $capex_category_id){
+						$update_cost_center = $this->admin->update_data('asset_group_transaction_item_tbl', array('capex_category_id' => $capex_category_id, 'capex_remarks' => $remarks), array('ag_trans_item_id' => $item_id));
 					}
 
 					if($ag_name == 'TRANSPORTATION EQUIPMENT'){

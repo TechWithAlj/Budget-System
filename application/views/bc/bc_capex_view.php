@@ -50,6 +50,8 @@
 										<th class="text-center" width=""></th>
 										<th width="7%">Asset</th>
 										<th width="7%">Cost Center</th>
+										<th width="7%">Type of CAPEX</th>
+										<th width="7%">Maintenance Category</th>
 										<th class="text-center" width="3%">Price</th>
 										<th class="text-center" width="3%">Total Price</th>
 										<th class="text-center" width="3%">Total Qty</th>
@@ -89,6 +91,8 @@
 											</td>
 											<td><?=$row->asg_name?></td>
 											<td><?=$row->cost_center_desc?></td>
+											<td><?=$row->capex_type_name?></td>
+											<td><?=$row->capex_category_name?></td>
 											<td><?=number_format($row->capex_price)?></td>
 											<td><?=number_format($row->capex_price * $row->total_qty)?></td>
 											<td><?=number_format($row->total_qty)?></td>
@@ -165,6 +169,20 @@
 										      		<div class="col-lg-3">
 										      			<label>Cost Center: </label>
 										      			<select class="form-control input-sm" id="item-cost-center" name="cost_center">
+										      				<option>Select..</option>
+										      			</select>
+										      		</div>
+													
+													<div class="col-lg-3">
+										      			<label>Capex Type: </label>
+										      			<select class="form-control input-sm" id="item-capex-type" name="capex_type">
+										      				<option>Select..</option>
+										      			</select>
+										      		</div>
+													
+													<div class="col-lg-3">
+										      			<label>Capex Category: </label>
+										      			<select class="form-control input-sm" id="item-capex-category" name="capex_category">
 										      				<option>Select..</option>
 										      			</select>
 										      		</div>

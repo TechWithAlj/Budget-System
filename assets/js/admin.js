@@ -3874,6 +3874,8 @@ $(document).ready(function () {
 					var price = parse_response["info"]["price"];
 					var total = parse_response["info"]["total"];
 					var cost_center = parse_response["info"]["cost_center"];
+					var capex_type = parse_response["info"]["capex_type"];
+					var capex_category = parse_response["info"]["capex_category"];
 					var month = parse_response["info"]["month"];
 					var rank = parse_response["info"]["rank"];
 					var remarks = parse_response["info"]["remarks"];
@@ -3923,6 +3925,12 @@ $(document).ready(function () {
 
 					$("#item-cost-center").empty();
 					$("#item-cost-center").append(cost_center);
+
+					$("#item-capex-type").empty();
+					$("#item-capex-type").append(capex_type);
+
+					$("#item-capex-category").empty();
+					$("#item-capex-category").append(capex_category);
 
 					if (asset_group == "TRANSPORTATION EQUIPMENT") {
 						$("#edit-capex-rank").empty();
