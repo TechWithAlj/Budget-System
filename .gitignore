@@ -5,7 +5,11 @@ application/cache/*
 
 application/logs/*
 application/third_party/*
-application/config/*
+application/config/database.php
+application/config/constants.php
+application/config/config.php
+application/config/autoload.php
+application/ci_sessions/*
 system/*
 !application/logs/index.html
 
