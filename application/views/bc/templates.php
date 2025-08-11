@@ -36,7 +36,7 @@
 	<script src="<?=base_url();?>assets/js/bootstrap-toggle.min.js"></script>
 	<script type="text/javascript" src="<?=base_url()?>assets/js/chart.min.js"></script>
 	<script type="text/javascript" src="<?=base_url()?>assets/js/chartjs-plugin-datalabels.min.js"></script>
-	<script src="<?=base_url()?>assets/js/bc.js?v=3.1"></script>
+	<script src="<?=base_url()?>assets/js/bc.js?v=3.2"></script>
 </head>
 <body>
 	<div class="main-wrapper">
