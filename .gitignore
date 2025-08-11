@@ -6,7 +6,7 @@ application/cache/*
 application/logs/*
 application/third_party/*
 application/config/*
-systems/*
+system/*
 !application/logs/index.html
 
 !application/*/.htaccess
