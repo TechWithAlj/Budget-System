@@ -54,6 +54,8 @@
 											<th class="text-center" style="background: #03A9F4;color: #fff;"></th>
 											<th style="background: #03A9F4;color: #fff; width:20px;">Asset</th>
 											<th width="7%" style="background: #03A9F4;color: #fff;">Cost Center</th>
+											<th width="7%" style="background: #03A9F4;color: #fff;">Type of CAPEX</th>
+											<th width="7%" style="background: #03A9F4;color: #fff;">Maintenance Category</th>
 											<th class="text-center" width="3%" style="background: #03A9F4;color: #fff;">Price</th>
 											<th class="text-center" width="3%">Total Price</th>
 											<th class="text-center" width="3%">Total Qty</th>
