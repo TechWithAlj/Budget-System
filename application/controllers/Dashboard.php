@@ -444,6 +444,7 @@ class Dashboard extends CI_Controller {
 			if($get_process['result'] == TRUE){
 
 				// echo $get_process['info']->bc_name;
+				// echo $get_process['info']->dashboard_bc_trans_id;
 				// echo " ".$bc_name;
 				if($get_process['info']->bc_name == strtoupper($bc_name)){
 
@@ -491,8 +492,8 @@ class Dashboard extends CI_Controller {
 
 		/*Sales Mix*/
 
-		echo $get_sales_mix = $this->sales_mix_data($trans_id, $bc_id, $year);
-		exit;
+		$get_sales_mix = $this->sales_mix_data($trans_id, $bc_id, $year);
+	
  		
  		/*Outlet Count*/
 
