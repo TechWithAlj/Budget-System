@@ -337,7 +337,7 @@ class Dashboard extends CI_Controller {
 				
 				if($check_trans == TRUE){
 					$check_trans2 = $this->admin->get_query('SELECT * FROM dashboard_bc_transaction_tbl WHERE bc_id = ' . $bc . ' AND dashboard_bc_trans_year = ' . $year . ' ORDER BY dashboard_bc_trans_added DESC LIMIT 1', TRUE);
-					if(count($check_trans2) > 0){
+					if(!empty($check_trans2)){
 						$status = $check_trans2->dashboard_trans_status_id;
 						if($status == 1 || $status == 2 || $status == 4){
 							$msg = '<div class="alert alert-danger">Error Report Cron on going. Please try again later!</div>';
@@ -557,14 +557,15 @@ class Dashboard extends CI_Controller {
 				$set_trans = array('dashboard_trans_status_id' => 6, 'dashboard_bc_trans_end' => date_now());
 				$where_trans = array('dashboard_bc_trans_id' => $trans_id);
 				$update_trans = $this->admin->update_data('dashboard_bc_transaction_tbl', $set_trans, $where_trans);
-				$this->log_error($logFile, "DB transaction failed and rolled back.");
+				$db_error = print_r($this->db->error(), true);
+				$this->log_error($logFile, "DB transaction failed and rolled back. DB Error: " . $db_error);
 			}else{
 				$this->db->trans_commit();
 				$msg = '<div class="alert alert-success">Price successfully adjusted.</strong></div>';
 				$set_trans = array('dashboard_trans_status_id' => 3, 'dashboard_bc_trans_end' => date_now());
 				$where_trans = array('dashboard_bc_trans_id' => $trans_id);
 				$update_trans = $this->admin->update_data('dashboard_bc_transaction_tbl', $set_trans, $where_trans);
-				$this->log_error($logFile, "DB transaction committed successfully.");
+				if (file_exists($logFile)) { @unlink($logFile); }
 			}
 
 			echo $msg;
@@ -26551,14 +26552,15 @@ class Dashboard extends CI_Controller {
 				$set_trans = array('dashboard_trans_status_id' => 6);
 				$where_trans = array('dashboard_unit_trans_id' => $trans_id);
 				$update_trans = $this->admin->update_data('dashboard_unit_transaction_tbl', $set_trans, $where_trans);
-				$this->log_error($logFile, "DB transaction failed and rolled back.");
+				$db_error = print_r($this->db->error(), true);
+				$this->log_error($logFile, "DB transaction failed and rolled back. DB Error: " . $db_error);
 			}else{
 				$this->db->trans_commit();
 				$msg = '<div class="alert alert-success">Price successfully adjusted.</strong></div>';
 				$set_trans = array('dashboard_trans_status_id' => 3, 'dashboard_unit_trans_end' => date_now());
 				$where_trans = array('dashboard_unit_trans_id' => $trans_id);
 				$update_trans = $this->admin->update_data('dashboard_unit_transaction_tbl', $set_trans, $where_trans);
-				$this->log_error($logFile, "DB transaction committed successfully.");
+				if (file_exists($logFile)) { @unlink($logFile); }
 			}
 
 			echo $msg;
