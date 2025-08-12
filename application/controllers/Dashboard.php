@@ -469,7 +469,7 @@ class Dashboard extends CI_Controller {
 					$year = $get_process['info']->dashboard_bc_trans_year;
 					$this->dashboard($dashboard_bc_trans_id, $bc_id, $year, $bc_name);
 				} else {
-					echo "Not same.";
+					echo "{$bc_name} input is not the same as current to process : {$get_process['info']->dashboard_bc_trans_id} - {$get_process['info']->bc_name}.";
 				}
 			}else{
 				echo 'Ongoing Queue';
