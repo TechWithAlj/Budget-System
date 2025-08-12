@@ -5,8 +5,22 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 class Dashboard extends CI_Controller {
 
 	public function __construct() {
-    	parent::__construct();
-    	$this->load->model('admin_model', 'admin');
+		parent::__construct();
+		$this->load->model('admin_model', 'admin');
+	}
+
+	// Reusable error logger
+	protected static function log_error($logFile, $message) {
+		$date = date('Y-m-d H:i:s');
+		file_put_contents($logFile, "[$date] $message\n", FILE_APPEND);
+	}
+
+	// Reusable error handler setter
+	protected function set_dashboard_error_handler($logFile) {
+		return set_error_handler(function($errno, $errstr, $errfile, $errline) use ($logFile) {
+			self::log_error($logFile, "PHP Error [$errno] $errstr in $errfile on line $errline");
+			return false;
+		});
 	}
 
 	public function _active_year(){
@@ -453,7 +467,7 @@ class Dashboard extends CI_Controller {
 					$dashboard_bc_trans_id = $get_process['info']->dashboard_bc_trans_id;
 					$bc_id = $get_process['info']->bc_id;
 					$year = $get_process['info']->dashboard_bc_trans_year;
-					$this->dashboard($dashboard_bc_trans_id, $bc_id, $year);
+					$this->dashboard($dashboard_bc_trans_id, $bc_id, $year, $bc_name);
 				} else {
 					echo "Not same.";
 				}
@@ -465,122 +479,106 @@ class Dashboard extends CI_Controller {
 		}
 	}
 
-	public function dashboard($trans_id, $bc_id, $year){
-		//$info = $this->_require_login();
-		$data['title'] = 'Dashboard';
+	public function dashboard($trans_id, $bc_id, $year, $bc_name){
+		// Error log setup
+		$logDir = APPPATH . '../assets/ErrorLogs/';
+		$logFile = $logDir . "process-dashboard-{$trans_id} {$bc_name}.log";
+		if (!file_exists($logDir)) {
+			mkdir($logDir, 0777, true);
+		}
+		if (!file_exists($logFile)) {
+			file_put_contents($logFile, "");
+			chmod($logFile, 0666);
+		}
+		$prev_error_handler = $this->set_dashboard_error_handler($logFile);
 
-		ini_set('max_execution_time', 0); 
-		ini_set('memory_limit','10048M');
-
-		$cost_center_id = $this->get_bc_cost_center($bc_id);
-
-		$last_year = $year - 1;
-		$data['year'] = $year;
-		$data['last_year'] = $last_year;
-
-		$set_trans = array('dashboard_trans_status_id' => 2, 'dashboard_bc_trans_process' => date_now());
-		$where_trans = array('dashboard_bc_trans_id' => $trans_id);
-		$update_trans = $this->admin->update_data('dashboard_bc_transaction_tbl', $set_trans, $where_trans);
-
-		$this->db->trans_start();
-
-		
-		/*Broiler*/
-
-		$get_broiler = $this->get_broiler_dashboard($trans_id, $bc_id, $year);
-
-
-		/*Sales Mix*/
-
-		$get_sales_mix = $this->sales_mix_data($trans_id, $bc_id, $year);
-	
- 		
- 		/*Outlet Count*/
-
- 		$get_outlet = $this->get_outlet_data($trans_id, $bc_id, $year);
-
- 		
- 		/*Employee Count*/
-
- 		$get_employee = $this->get_employee_data($trans_id, $bc_id, $year);
- 		$employee_pdf = $this->employee_pdf_data($trans_id, $bc_id, $year);
- 		
- 		/*Volume*/
-
- 		$volume = $this->get_volume_data($trans_id, $bc_id, $year);
-
- 		
- 		/*Price Assumption*/
-
- 		$data['price'] = $this->price_assumption_data($trans_id, $bc_id, $year);
-
-
- 		/*NOI*/
-
- 		$compute_noi =  $this->compute_noi($trans_id, $bc_id, $year);
-
- 		
- 		/*CAPEX*/
-
- 		$get_capex = $this->capex_summary_data($trans_id, $bc_id, $year);
- 		$get_capex_item = $this->capex_report_item_data($trans_id, $bc_id, $cost_center_id, $year);
- 		$get_capex_group = $this->capex_report_group_data($trans_id, $bc_id, $cost_center_id, $year);
- 		
- 		/*OPEX*/
-
- 		$total_opex = $this->opex_nationwide_bc2($trans_id, $bc_id, $year);
-
- 		
- 		/*OPEX Per GL*/
-
- 		$get_opex_data = $this->get_opex_gl_dashboard($trans_id, $bc_id, $year, $cost_center_id, $bc_id);
- 		$data['opex_tbl'] = $get_opex_data;
-
- 		/*OPEX Per Cost Center*/
-
- 		$get_opex_cost_center_data = $this->opex_per_cost_center_data($trans_id, $bc_id, $cost_center_id, $year);
-
- 		$variable_cost = $compute_noi['total_variable'];
- 		$data['variable_cost'] = $variable_cost;
-
- 		$commission = $compute_noi['total_commission'];
- 		$data['commission'] = $commission;
-
- 		$data['variable_cost'] = $compute_noi['total_variable'];
- 		$data['total_net_sales'] = $compute_noi['total_net_sales'];
-
- 		$net_sales = $compute_noi['total_net_sales'];
-
- 		$data['net_sales'] = $net_sales;
-
- 		$data['total_opex'] = $total_opex;
- 		$data['period_cost'] = $total_opex;
- 		$total_sales_unit = $compute_noi['total_sales_unit'];
-
- 		$cm = $net_sales - $variable_cost;
- 		$period_cost = $total_opex;
- 		$noi_summary = $cm - $total_opex;
- 		$noi_percent = $net_sales > 0 ? ($noi_summary / $net_sales) * 100 : 0;
-
- 		$get_pnl = $this->get_noi_dashboard($trans_id, $bc_id, $year, $net_sales, $total_sales_unit, $variable_cost, $period_cost, $commission);
-
- 		if($this->db->trans_status() === FALSE){
-			$this->db->trans_rollback();
-			$msg = '<div class="alert alert-danger">Error please try again!</div>';
-
-			$set_trans = array('dashboard_trans_status_id' => 6, 'dashboard_bc_trans_end' => date_now());
+		try {
+			// ...existing code...
+			$data['title'] = 'Dashboard';
+			ini_set('max_execution_time', 0); 
+			ini_set('memory_limit','10048M');
+			$cost_center_id = $this->get_bc_cost_center($bc_id);
+			$last_year = $year - 1;
+			$data['year'] = $year;
+			$data['last_year'] = $last_year;
+			$set_trans = array('dashboard_trans_status_id' => 2, 'dashboard_bc_trans_process' => date_now());
 			$where_trans = array('dashboard_bc_trans_id' => $trans_id);
 			$update_trans = $this->admin->update_data('dashboard_bc_transaction_tbl', $set_trans, $where_trans);
-		}else{
-			$this->db->trans_commit();
-			$msg = '<div class="alert alert-success">Price successfully adjusted.</strong></div>';
+			$this->db->trans_start();
 
-			$set_trans = array('dashboard_trans_status_id' => 3, 'dashboard_bc_trans_end' => date_now());
-			$where_trans = array('dashboard_bc_trans_id' => $trans_id);
-			$update_trans = $this->admin->update_data('dashboard_bc_transaction_tbl', $set_trans, $where_trans);
+			/*Broiler*/
+			$get_broiler = $this->get_broiler_dashboard($trans_id, $bc_id, $year);
+			/*Sales Mix*/
+			$get_sales_mix = $this->sales_mix_data($trans_id, $bc_id, $year);
+			
+			/*Outlet Count*/
+			$get_outlet = $this->get_outlet_data($trans_id, $bc_id, $year);
+			/*Employee Count*/
+			$get_employee = $this->get_employee_data($trans_id, $bc_id, $year);
+			$employee_pdf = $this->employee_pdf_data($trans_id, $bc_id, $year);
+			/*Volume*/
+			$volume = $this->get_volume_data($trans_id, $bc_id, $year);
+			/*Price Assumption*/
+			$data['price'] = $this->price_assumption_data($trans_id, $bc_id, $year);
+			/*NOI*/
+			$compute_noi =  $this->compute_noi($trans_id, $bc_id, $year);
+			/*CAPEX*/
+			$get_capex = $this->capex_summary_data($trans_id, $bc_id, $year);
+			$get_capex_item = $this->capex_report_item_data($trans_id, $bc_id, $cost_center_id, $year);
+			$get_capex_group = $this->capex_report_group_data($trans_id, $bc_id, $cost_center_id, $year);
+			/*OPEX*/
+			$total_opex = $this->opex_nationwide_bc2($trans_id, $bc_id, $year);
+			/*OPEX Per GL*/
+			$get_opex_data = $this->get_opex_gl_dashboard($trans_id, $bc_id, $year, $cost_center_id, $bc_id);
+			$data['opex_tbl'] = $get_opex_data;
+			/*OPEX Per Cost Center*/
+			$get_opex_cost_center_data = $this->opex_per_cost_center_data($trans_id, $bc_id, $cost_center_id, $year);
+
+			$variable_cost = $compute_noi['total_variable'];
+			$data['variable_cost'] = $variable_cost;
+			$commission = $compute_noi['total_commission'];
+			$data['commission'] = $commission;
+			$data['variable_cost'] = $compute_noi['total_variable'];
+			$data['total_net_sales'] = $compute_noi['total_net_sales'];
+			$net_sales = $compute_noi['total_net_sales'];
+			$data['net_sales'] = $net_sales;
+			$data['total_opex'] = $total_opex;
+			$data['period_cost'] = $total_opex;
+			$total_sales_unit = $compute_noi['total_sales_unit'];
+			$cm = $net_sales - $variable_cost;
+			$period_cost = $total_opex;
+			$noi_summary = $cm - $total_opex;
+			$noi_percent = $net_sales > 0 ? ($noi_summary / $net_sales) * 100 : 0;
+			$get_pnl = $this->get_noi_dashboard($trans_id, $bc_id, $year, $net_sales, $total_sales_unit, $variable_cost, $period_cost, $commission);
+
+			if($this->db->trans_status() === FALSE){
+				$this->db->trans_rollback();
+				$msg = '<div class="alert alert-danger">Error please try again!</div>';
+				$set_trans = array('dashboard_trans_status_id' => 6, 'dashboard_bc_trans_end' => date_now());
+				$where_trans = array('dashboard_bc_trans_id' => $trans_id);
+				$update_trans = $this->admin->update_data('dashboard_bc_transaction_tbl', $set_trans, $where_trans);
+				$this->log_error($logFile, "DB transaction failed and rolled back.");
+			}else{
+				$this->db->trans_commit();
+				$msg = '<div class="alert alert-success">Price successfully adjusted.</strong></div>';
+				$set_trans = array('dashboard_trans_status_id' => 3, 'dashboard_bc_trans_end' => date_now());
+				$where_trans = array('dashboard_bc_trans_id' => $trans_id);
+				$update_trans = $this->admin->update_data('dashboard_bc_transaction_tbl', $set_trans, $where_trans);
+				$this->log_error($logFile, "DB transaction committed successfully.");
+			}
+
+			echo $msg;
+		} catch (Throwable $e) {
+			$this->log_error($logFile, "Error in dashboard: " . $e->getMessage());
+			echo '<div class="alert alert-danger">Error occurred. See log.</div>';
 		}
 
-		echo $msg;
+		// Restore previous error handler
+		if ($prev_error_handler !== null) {
+			set_error_handler($prev_error_handler);
+		} else {
+			restore_error_handler();
+		}
 	}
 
 	public function get_broiler_dashboard($trans_id, $bc_id, $year){
@@ -16479,6 +16477,8 @@ class Dashboard extends CI_Controller {
 
 					$outlet_id = $row_cust->outlet_id;
 
+					$cust_commission = 0;
+
 					if($material_id == 225){
 						$cust_variable = $total_cost * $cust_total_qty;
 						if($bom_commision_type == 1){ //Percent
@@ -26500,11 +26500,11 @@ class Dashboard extends CI_Controller {
 			$get_process = $this->admin->check_join('dashboard_unit_transaction_tbl a', $join_process, TRUE);
 			
 			if($get_process['result'] == TRUE){
-				if($get_process['info']->company_unit_name == $unit_name){
+				if($get_process['info']->company_unit_name == strtoupper($unit_name)){
 					$dashboard_unit_trans_id = $get_process['info']->dashboard_unit_trans_id;
 					$company_unit_id = $get_process['info']->company_unit_id;
 					$year = $get_process['info']->dashboard_unit_trans_year;
-					$this->dashboard_unit($dashboard_unit_trans_id, $company_unit_id, $year);
+					$this->dashboard_unit($dashboard_unit_trans_id, $company_unit_id, $year, strtoupper($unit_name));
 				}else{
 
 				}
@@ -26516,50 +26516,62 @@ class Dashboard extends CI_Controller {
 		}
 	}
 
-	public function dashboard_unit($trans_id, $company_unit_id, $year){
-		//$info = $this->_require_login();
-		$data['title'] = 'Dashboard';
+	public function dashboard_unit($trans_id, $company_unit_id, $year, $unit_name){
+		$logDir = APPPATH . '../assets/ErrorLogs/';
+		$logFile = $logDir . "process-dashboard-unit-{$trans_id}-{$unit_name}.log";
+		if (!file_exists($logDir)) {
+			mkdir($logDir, 0777, true);
+		}
+		if (!file_exists($logFile)) {
+			file_put_contents($logFile, "");
+			chmod($logFile, 0666);
+		}
+		$prev_error_handler = $this->set_dashboard_error_handler($logFile);
 
-		ini_set('max_execution_time', 0); 
-		ini_set('memory_limit','6048M');
-
-		$cost_center_id = $this->get_unit_cost_center($company_unit_id);
-
-		$set_trans = array('dashboard_trans_status_id' => 2, 'dashboard_unit_trans_process' => date_now());
-		$where_trans = array('dashboard_unit_trans_id' => $trans_id);
-		$update_trans = $this->admin->update_data('dashboard_unit_transaction_tbl', $set_trans, $where_trans);
-
-		$this->db->trans_start();
-
-		
-		/*OPEX Per Cost Center*/
-
-		$process_opex = $this->unit_opex_data($trans_id, $company_unit_id, $year);
-
-		/*CAPEX*/
-		$process_capex = $this->unit_capex_data($trans_id, $company_unit_id, $year);
-
-		/*Manpower*/
-
-		$process_manpower = $this->unit_employee_pdf_data($trans_id, $cost_center_id, $year);
-		
- 		if($this->db->trans_status() === FALSE){
-			$this->db->trans_rollback();
-			$msg = '<div class="alert alert-danger">Error please try again!</div>';
-
-			$set_trans = array('dashboard_trans_status_id' => 6);
+		try {
+			$data['title'] = 'Dashboard';
+			ini_set('max_execution_time', 0); 
+			ini_set('memory_limit','6048M');
+			$cost_center_id = $this->get_unit_cost_center($company_unit_id);
+			$set_trans = array('dashboard_trans_status_id' => 2, 'dashboard_unit_trans_process' => date_now());
 			$where_trans = array('dashboard_unit_trans_id' => $trans_id);
 			$update_trans = $this->admin->update_data('dashboard_unit_transaction_tbl', $set_trans, $where_trans);
-		}else{
-			$this->db->trans_commit();
-			$msg = '<div class="alert alert-success">Price successfully adjusted.</strong></div>';
+			$this->db->trans_start();
 
-			$set_trans = array('dashboard_trans_status_id' => 3, 'dashboard_unit_trans_end' => date_now());
-			$where_trans = array('dashboard_unit_trans_id' => $trans_id);
-			$update_trans = $this->admin->update_data('dashboard_unit_transaction_tbl', $set_trans, $where_trans);
+			/*OPEX Per Cost Center*/
+			$process_opex = $this->unit_opex_data($trans_id, $company_unit_id, $year);
+			/*CAPEX*/
+			$process_capex = $this->unit_capex_data($trans_id, $company_unit_id, $year);
+			/*Manpower*/
+			$process_manpower = $this->unit_employee_pdf_data($trans_id, $cost_center_id, $year);
+
+			if($this->db->trans_status() === FALSE){
+				$this->db->trans_rollback();
+				$msg = '<div class="alert alert-danger">Error please try again!</div>';
+				$set_trans = array('dashboard_trans_status_id' => 6);
+				$where_trans = array('dashboard_unit_trans_id' => $trans_id);
+				$update_trans = $this->admin->update_data('dashboard_unit_transaction_tbl', $set_trans, $where_trans);
+				$this->log_error($logFile, "DB transaction failed and rolled back.");
+			}else{
+				$this->db->trans_commit();
+				$msg = '<div class="alert alert-success">Price successfully adjusted.</strong></div>';
+				$set_trans = array('dashboard_trans_status_id' => 3, 'dashboard_unit_trans_end' => date_now());
+				$where_trans = array('dashboard_unit_trans_id' => $trans_id);
+				$update_trans = $this->admin->update_data('dashboard_unit_transaction_tbl', $set_trans, $where_trans);
+				$this->log_error($logFile, "DB transaction committed successfully.");
+			}
+
+			echo $msg;
+		} catch (Throwable $e) {
+			$this->log_error($logFile, "Error in dashboard_unit: " . $e->getMessage());
+			echo '<div class="alert alert-danger">Error occurred. See log.</div>';
 		}
 
-		echo $msg;
+		if ($prev_error_handler !== null) {
+			set_error_handler($prev_error_handler);
+		} else {
+			restore_error_handler();
+		}
 	}
 
 	public function unit_opex_data($trans_id, $company_unit_id, $year){
