@@ -3132,6 +3132,14 @@ $(document).ready(function () {
 		placeholder: "Select Cost Center",
 	});
 
+	$(".capex-type").select2({
+		placeholder: "Select Capex Type",
+	});
+
+	$(".capex-category").select2({
+		placeholder: "Select Capex Mnt Category",
+	});
+
 	$("#capex-ag").select2({
 		placeholder: "Select Asset Group",
 	});
@@ -3181,6 +3189,14 @@ $(document).ready(function () {
 					$(".capex-cost-center").select2({
 						placeholder: "Select Cost Center",
 					});
+
+					$(".capex-type").select2({
+						placeholder: "Select Capex Type",
+					});
+
+					$(".capex-category").select2({
+						placeholder: "Select Capex Mnt Category",
+					});
 				} else {
 					console.log("Error please contact your administrator");
 				}
@@ -3207,6 +3223,14 @@ $(document).ready(function () {
 
 				$(".capex-cost-center").select2({
 					placeholder: "Select Cost Center",
+				});
+
+				$(".capex-type").select2({
+					placeholder: "Select Capex Type",
+				});
+
+				$(".capex-category").select2({
+					placeholder: "Select Capex Mnt Category",
 				});
 			},
 		});
