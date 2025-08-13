@@ -58,6 +58,7 @@
 									<th>Cost Center Desc</th>
 									<th>Cost Center Code</th>
 									<th>Total</th>
+									<th>Added</th>
 									<th>Action</th>
 								</tr>
 							</thead>
@@ -72,6 +73,7 @@
 									<td><?=$row->cost_center_desc?></td>
 									<td><?=$row->cost_center_code?></td>
 									<td></td>
+									<td><?=$row->ag_trans_added?></td>
 									<td><a href="<?=base_url('business-center/view-capex/' . encode($row->ag_trans_id))?>" class="btn btn-success btn-xs">View</a>&nbsp;&nbsp;
 
 									<?php if($budget_status):?>

@@ -60,6 +60,7 @@
 									<th>Cost Center Code</th>
 									<th>Budget Year</th>
 									<th>Total</th>
+									<th>Added</th>
 									<th>Action</th>
 								</tr>
 							</thead>
@@ -75,6 +76,7 @@
 									<td><?=$row->cost_center_code?></td>
 									<td><?=$row->ag_trans_budget_year?></td>
 									<td></td>
+									<td><?=$row->ag_trans_added?></td>
 									<td><a href="<?=base_url('admin/view-capex/' . encode($row->ag_trans_id))?>" class="btn btn-success btn-xs">View</a>&nbsp;&nbsp;<a data-id="<?=encode($row->ag_trans_id)?>" class="btn btn-danger btn-xs cancel-capex-btn">Cancel</a></td>
 								</tr>
 
