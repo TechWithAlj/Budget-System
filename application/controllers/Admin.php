@@ -19441,8 +19441,24 @@ class Admin extends CI_Controller {
 		foreach($get_cost_center as $row){
 			$cost_center_data .= '<option value="' . encode($row->cost_center_id) . '">' . $row->cost_center_desc . '</option>';
 		}
-
 		$cost_center_data .= '</select>';
+
+		$get_capex_type = $this->admin->get_data('capex_type_tbl', array('capex_type_status' => 1));
+		$get_capex_category = $this->admin->get_data('capex_category_tbl', array('capex_category_status' => 1));
+
+		$capex_type_data = '<select name="capex_type[]" class="form-control input-sm capex-type" style="width: 200px;">';
+		$capex_type_data .= '<option value="">Select capex type...</option>';
+		foreach($get_capex_type as $row){
+			$capex_type_data .= '<option value="' . encode($row->capex_type_id) . '">' . $row->capex_type_name . '</option>';
+		}
+		$capex_type_data .= '</select>';
+
+		$capex_category_data = '<select name="capex_category[]" class="form-control input-sm capex-category" style="width: 200px;">';
+		$capex_category_data .= '<option value="">Select capex category...</option>';
+		foreach($get_capex_category as $row){
+			$capex_category_data .= '<option value="' . encode($row->capex_category_id) . '">' . $row->capex_category_name . '</option>';
+		}
+		$capex_category_data .= '</select>';
 
 		$get_rank = $this->admin->get_data('rank_tbl', array('rank_status' => 1));
 		$rank_data = '<select name="rank[]" class="form-control input-sm capex-rank" required>';
@@ -19460,6 +19476,8 @@ class Admin extends CI_Controller {
 			$asset .= '<td width=""><a href="#" class="remove-asg"><i class="fa fa-remove"></i></a>&nbsp;&nbsp;&nbsp;<a href="" class="add-asset-sub" data-id="' . encode($row->asg_id) . '"><i class="fa fa-plus"></i></a>&nbsp;&nbsp;<a href="#" class="show-slider-capex"><span class="fa fa-sliders"></span></a></td>';
 			$asset .= '<td style="width:20px;">' . $row->asg_name .'</td>';
 			$asset .= '<td width="7%"><div class="form-group">' . $cost_center_data . '</div></td>';
+			$asset .= '<td width="7%"><div class="form-group">' . $capex_type_data . '</div></td>';
+			$asset .= '<td width="7%"><div class="form-group">' . $capex_category_data . '</div></td>';
 			$asset .= '<td class="text-right" width="3%">' . number_format($row->asg_price, 2) . '</td>';
 			$asset .= '<td class="text-right" width="3%"><label class="capex-total-price">0</label></td>';
 			$asset .= '<td class="text-right" width="3%"><label class="capex-total-qty">0</label></td>';
@@ -19485,6 +19503,8 @@ class Admin extends CI_Controller {
 				<th class="text-center" style="background: #03A9F4;color: #fff;"></th>
 				<th style="background: #03A9F4;color: #fff; width:20px;">Asset</th>
 				<th width="7%" style="background: #03A9F4;color: #fff;">Cost Center</th>
+				<th width="7%" style="background: #03A9F4;color: #fff;">Type of CAPEX</th>
+				<th width="7%" style="background: #03A9F4;color: #fff;">Maintenance Category</th>
 				<th class="text-center" width="3%" style="background: #03A9F4;color: #fff;">Price</th>
 				<th class="text-center" width="3%">Total Price</th>
 				<th class="text-center" width="3%">Total Qty</th>
