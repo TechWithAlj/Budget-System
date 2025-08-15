@@ -1120,6 +1120,24 @@ class Production extends CI_Controller {
 					$where = 'a.service_group_id = 4'; //EXPENSES OF STORE
 				} else if($component_type_id == 10){
 					$where = 'a.service_group_id = 5'; //EXPENSES OF STORE
+				} else if($component_type_id == 23){
+					$where = 'a.service_group_id = 6'; //Sales Commission
+				} else if($component_type_id == 24){
+					$where = 'a.service_group_id = 7'; //OTHER FEES
+				} else if($component_type_id == 25){
+					$where = 'a.service_group_id = 8'; //PACKAGING LOSS
+				} else if($component_type_id == 26){
+					$where = 'a.service_group_id = 9'; //TOLL FEE - INTERNAL
+				} else if($component_type_id == 27){
+					$where = 'a.service_group_id = 10'; //TOLL FEE - EXTERNAL
+				} else if($component_type_id == 28){
+					$where = 'a.service_group_id = 11'; //DIRECT LABOR
+				} else if($component_type_id == 29){
+					$where = 'a.service_group_id = 12'; //RENT VARIABLE
+				} else if($component_type_id == 30){
+					$where = 'a.service_group_id = 13'; //UTILITIES VARIABLE
+				} else if($component_type_id == 31){
+					$where = 'a.service_group_id = 14'; //LABOR VARIABLE
 				}
 				$services = $this->admin->get_data('services_tbl a', $where);
 				
@@ -1197,8 +1215,8 @@ class Production extends CI_Controller {
 		exit();*/
 		$info = $this->_require_login();
 		$user_id = decode($info['user_id']);
+		$bc_id = decode($this->input->post('bc_id'));
 		if($_SERVER['REQUEST_METHOD'] == 'POST'){
-			$bc_id = decode($this->input->post('bc_id'));
 			$material = $this->input->post('material_id');
 			if(!empty($bc_id)){
 				$this->db->trans_start();
@@ -1251,10 +1269,10 @@ class Production extends CI_Controller {
 		exit();*/
 		$info = $this->_require_login();
 		$user_id = decode($info['user_id']);
+		$bc_id = decode($this->input->post('bc_id'));
 		if($_SERVER['REQUEST_METHOD'] == 'POST'){
 			$ext_prod_trans_id_array = $this->input->post('ext_prod_trans_id');
 			$year = decode($this->input->post('year'));
-			$bc_id = decode($this->input->post('bc_id'));
 			$ave_wgt = clean_data($this->input->post('ave_wgt'));
 			$cost = clean_data($this->input->post('cost'));
 

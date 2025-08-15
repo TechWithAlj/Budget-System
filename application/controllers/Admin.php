@@ -46575,6 +46575,12 @@ class Admin extends CI_Controller {
 					$where = 'a.service_group_id = 10'; //TOLL FEE - EXTERNAL
 				} else if($component_type_id == 28){
 					$where = 'a.service_group_id = 11'; //DIRECT LABOR
+				} else if($component_type_id == 29){
+					$where = 'a.service_group_id = 12'; //RENT VARIABLE
+				} else if($component_type_id == 30){
+					$where = 'a.service_group_id = 13'; //UTILITIES VARIABLE
+				} else if($component_type_id == 31){
+					$where = 'a.service_group_id = 14'; //LABOR VARIABLE
 				}
 				$services = $this->admin->get_data('services_tbl a', $where);
 				
