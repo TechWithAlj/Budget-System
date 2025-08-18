@@ -21970,7 +21970,7 @@ class Dashboard extends CI_Controller {
 	}
 
 	public function header($pdf) {
-		$image_file = 'assets/img/ctgi-logo-2.png';
+		$image_file = 'assets/img/CTGI-LOGO-2.png';
         $pdf->setJPEGQuality(100);
 	    $pdf->SetLineStyle(array('width' => 1, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => array(255,255,255)));
 	    $pdf->Image($image_file, 145, 10, 50, 14.31, 'PNG', '', '', true, 150, '', false, false, 1, false, false, false);
@@ -21982,7 +21982,7 @@ class Dashboard extends CI_Controller {
 
     public function header_landscape($pdf) {
 		// $image_file = 'assets/img/bavi-logo.png';
-		$image_file = 'assets/img/ctgi-logo-2.png';
+		$image_file = 'assets/img/CTGI-LOGO-2.png';
         $pdf->setJPEGQuality(100);
 	    $pdf->SetLineStyle(array('width' => 1, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => array(255,255,255)));
 	    $pdf->Image($image_file, 230, 10, 50, 14.31, 'PNG', '', '', true, 150, '', false, false, 1, false, false, false);
