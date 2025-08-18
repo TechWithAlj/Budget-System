@@ -22707,8 +22707,7 @@ class Business_center extends CI_Controller {
 		if($check_cost_center['result'] == TRUE){
 			$cost_center_name = $check_cost_center['info']->cost_center_desc;
 
-
-			$asset_details = $this->admin->get_query('SELECT c.ag_trans_item_id, d.asg_name, g.cost_center_desc, g.cost_center_code, b.capex_price, a.ag_trans_budget_year, b.capex_lifespan, e.ag_name,
+			$qry = 'SELECT c.ag_trans_item_id, d.asg_name, g.cost_center_desc, g.cost_center_code, h.capex_type_name, i.capex_category_name, b.capex_price, a.ag_trans_budget_year, b.capex_lifespan, e.ag_name,
 
 				(SELECT SUM(x.capex_qty) FROM asset_group_transaction_details_tbl x WHERE b.ag_trans_item_id=x.ag_trans_item_id) as total_qty, b.capex_remarks, 
 				
@@ -22727,8 +22726,9 @@ class Business_center extends CI_Controller {
 				(SELECT SUM(x.capex_qty) FROM asset_group_transaction_details_tbl x WHERE b.ag_trans_item_id=x.ag_trans_item_id AND MONTH(x.capex_budget_date)=11 AND x.ag_trans_det_status=1) as nov,
 				(SELECT SUM(x.capex_qty) FROM asset_group_transaction_details_tbl x WHERE b.ag_trans_item_id=x.ag_trans_item_id AND MONTH(x.capex_budget_date)=12 AND x.ag_trans_det_status=1) as december
 
-				FROM asset_group_transaction_tbl a, asset_group_transaction_item_tbl b, asset_group_transaction_details_tbl c, asset_subgroup_tbl d, asset_group_tbl e, transaction_type_tbl f, cost_center_tbl g  WHERE a.ag_trans_id=b.ag_trans_id AND b.ag_trans_item_id=c.ag_trans_item_id AND b.asg_id=d.asg_id AND d.ag_id=e.ag_id AND b.cost_center_id=g.cost_center_id AND a.trans_type_id=f.trans_type_id AND b.cost_center_id=g.cost_center_id AND a.ag_trans_status=1 AND b.ag_trans_item_status=1 AND c.ag_trans_det_status=1 AND f.trans_type_name="BUDGET" AND a.ag_trans_budget_year=' . $year . ' AND g.parent_id=' . $cost_center_id . ' GROUP BY b.ag_trans_item_id'
-			);
+				FROM asset_group_transaction_tbl a, asset_group_transaction_item_tbl b, asset_group_transaction_details_tbl c, asset_subgroup_tbl d, asset_group_tbl e, transaction_type_tbl f, cost_center_tbl g, capex_type_tbl h, capex_category_tbl i WHERE a.ag_trans_id=b.ag_trans_id AND b.ag_trans_item_id=c.ag_trans_item_id AND b.asg_id=d.asg_id AND d.ag_id=e.ag_id AND b.cost_center_id=g.cost_center_id AND a.trans_type_id=f.trans_type_id AND b.cost_center_id=g.cost_center_id AND a.ag_trans_status=1 AND b.ag_trans_item_status=1 AND c.ag_trans_det_status=1 AND b.capex_type_id = h.capex_type_id AND b.capex_category_id = i.capex_category_id AND f.trans_type_name="BUDGET" AND a.ag_trans_budget_year=' . $year . ' AND g.parent_id=' . $cost_center_id . ' GROUP BY b.ag_trans_item_id';
+			
+			$asset_details = $this->admin->get_query($qry);
 
 			$this->load->library('excel');
 
@@ -22766,7 +22766,7 @@ class Business_center extends CI_Controller {
 			);
 
 
-			foreach(range('A','H') as $columnID) {
+			foreach(range('A','J') as $columnID) {
 				$spreadsheet->getActiveSheet()->getColumnDimension($columnID)
 						->setAutoSize(true);
 			}
@@ -22825,31 +22825,33 @@ class Business_center extends CI_Controller {
 			);
 
 
-			$spreadsheet->getActiveSheet()->getStyle("A1:V1")->applyFromArray($style_border);
-			$spreadsheet->getActiveSheet()->getStyle("A1:V1")->applyFromArray($style_info);
+			$spreadsheet->getActiveSheet()->getStyle("A1:X1")->applyFromArray($style_border);
+			$spreadsheet->getActiveSheet()->getStyle("A1:X1")->applyFromArray($style_info);
 			$spreadsheet->setActiveSheetIndex(0)
 				->setCellValue("A1", 'Location')
 				->setCellValue("B1", 'Asset Group')
 				->setCellValue("C1", 'Asset')
 				->setCellValue("D1", "Cost Center Code")
 				->setCellValue("E1", "Cost Center Name")
-				->setCellValue("F1", "Year")
-				->setCellValue("G1", "Useful Life (Month)")
-				->setCellValue("H1", "CAPEX Amount")
-				->setCellValue("I1", "Jan")
-				->setCellValue("J1", "Feb")
-				->setCellValue("K1", "Mar")
-				->setCellValue("L1", "Apr")
-				->setCellValue("M1", "May")
-				->setCellValue("N1", "Jun")
-				->setCellValue("O1", "Jul")
-				->setCellValue("P1", "Aug")
-				->setCellValue("Q1", "Sep")
-				->setCellValue("R1", "Oct")
-				->setCellValue("S1", "Nov")
-				->setCellValue("T1", "Dec")
-				->setCellValue("U1", "Total QTY")
-				->setCellValue("V1", "Total Amount")
+				->setCellValue("F1", "Type of CAPEX")
+				->setCellValue("G1", "Maintenance Category")
+				->setCellValue("H1", "Year")
+				->setCellValue("I1", "Useful Life (Month)")
+				->setCellValue("J1", "CAPEX Amount")
+				->setCellValue("K1", "Jan")
+				->setCellValue("L1", "Feb")
+				->setCellValue("M1", "Mar")
+				->setCellValue("N1", "Apr")
+				->setCellValue("O1", "May")
+				->setCellValue("P1", "Jun")
+				->setCellValue("Q1", "Jul")
+				->setCellValue("R1", "Aug")
+				->setCellValue("S1", "Sep")
+				->setCellValue("T1", "Oct")
+				->setCellValue("U1", "Nov")
+				->setCellValue("V1", "Dec")
+				->setCellValue("W1", "Total QTY")
+				->setCellValue("X1", "Total Amount")
 				;
 			// Add some data
 			$x= 2;
@@ -22878,35 +22880,37 @@ class Business_center extends CI_Controller {
 						->setCellValue("C$x",$row->asg_name)
 						->setCellValue("D$x",$row->cost_center_code)
 						->setCellValue("E$x",$row->cost_center_desc)
-						->setCellValue("F$x",$row->ag_trans_budget_year)
-						->setCellValue("G$x",$row->capex_lifespan)
-						->setCellValue("H$x",$row->capex_price)
-						->setCellValue("I$x",$jan)
-						->setCellValue("J$x",$feb)
-						->setCellValue("K$x",$mar)
-						->setCellValue("L$x",$apr)
-						->setCellValue("M$x",$may)
-						->setCellValue("N$x",$jun)
-						->setCellValue("O$x",$jul)
-						->setCellValue("P$x",$aug)
-						->setCellValue("Q$x",$sep)
-						->setCellValue("R$x",$oct)
-						->setCellValue("S$x",$nov)
-						->setCellValue("T$x",$december)
-						->setCellValue("U$x",$total)
-						->setCellValue("V$x",$capex_total)
+						->setCellValue("F$x",$row->capex_type_name)
+						->setCellValue("G$x",$row->capex_category_name)
+						->setCellValue("H$x",$row->ag_trans_budget_year)
+						->setCellValue("I$x",$row->capex_lifespan)
+						->setCellValue("J$x",$row->capex_price)
+						->setCellValue("K$x",$jan)
+						->setCellValue("L$x",$feb)
+						->setCellValue("M$x",$mar)
+						->setCellValue("N$x",$apr)
+						->setCellValue("O$x",$may)
+						->setCellValue("P$x",$jun)
+						->setCellValue("Q$x",$jul)
+						->setCellValue("R$x",$aug)
+						->setCellValue("S$x",$sep)
+						->setCellValue("T$x",$oct)
+						->setCellValue("U$x",$nov)
+						->setCellValue("V$x",$december)
+						->setCellValue("W$x",$total)
+						->setCellValue("X$x",$capex_total)
 						;
 
-				$spreadsheet->getActiveSheet()->getStyle("A$x:V$x")->applyFromArray($style_data);
+				$spreadsheet->getActiveSheet()->getStyle("A$x:X$x")->applyFromArray($style_data);
 				$x++;
 			}
 
-			foreach(range('A','V') as $columnID) {
+			foreach(range('A','X') as $columnID) {
 				$spreadsheet->getActiveSheet()->getColumnDimension($columnID)
 						->setAutoSize(true);
 			}
 
-			$spreadsheet->getActiveSheet()->getStyle('H2:V' . ($x - 1))->getNumberFormat()->setFormatCode('#,##0.00');
+			$spreadsheet->getActiveSheet()->getStyle('J2:X' . ($x - 1))->getNumberFormat()->setFormatCode('#,##0.00');
 			
 			// Rename worksheet
 			$spreadsheet->getActiveSheet()->setTitle('CAPEX Data - ' . $year);
