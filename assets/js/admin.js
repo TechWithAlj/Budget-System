@@ -3839,11 +3839,55 @@ $(document).ready(function () {
 		}
 	}
 
+	function validate_capex_type() {
+		var b = 0;
+		var cc_counter = 0;
+		$('select[name^="capex_type"]').each(function () {
+			var cc = $(this).val();
+			b++;
+
+			if (cc) {
+				cc_counter++;
+			} else {
+				$(this).parent().find(".select2-selection").addClass("error-select");
+			}
+		});
+
+		if (cc_counter < b) {
+			return false;
+		} else {
+			return true;
+		}
+	}
+
+	function validate_capex_category() {
+		var b = 0;
+		var cc_counter = 0;
+		$('select[name^="capex_category"]').each(function () {
+			var cc = $(this).val();
+			b++;
+
+			if (cc) {
+				cc_counter++;
+			} else {
+				$(this).parent().find(".select2-selection").addClass("error-select");
+			}
+		});
+
+		if (cc_counter < b) {
+			return false;
+		} else {
+			return true;
+		}
+	}
+
 	$("#add-capex-form").submit(function (e) {
 		var check = validate_capex();
 		var check_cc = validate_capex_cc();
+		var check_type = validate_capex_type();
+		var check_category = validate_capex_category();
 
-		if (check && check_cc) {
+		if (check && check_cc && check_type && check_category) {
 			//check of modal is already open allow submit form
 			var check_modal = ($("#modal-confirm-capex").data("bs.modal") || {})
 				.isShown;
@@ -3860,8 +3904,10 @@ $(document).ready(function () {
 	$("#add-trans-capex-item").submit(function (e) {
 		var check = validate_capex();
 		var check_cc = validate_capex_cc();
+		var check_type = validate_capex_type();
+		var check_category = validate_capex_category();
 
-		if (check && check_cc) {
+		if (check && check_cc && check_type && check_category) {
 			//check of modal is already open allow submit form
 			var check_modal = ($("#modal-confirm-capex").data("bs.modal") || {})
 				.isShown;

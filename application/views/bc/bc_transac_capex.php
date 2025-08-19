@@ -113,7 +113,7 @@
 					      	</div>
 					      	<div class="modal-body">
 				        		<div class="text-center">
-				        			<strong class="error-msg">Make sure all Cost Center is fill in?</strong>
+				        			<strong class="error-msg">Make sure all Cost Center, Type of CAPEX, and Maintenance Category is fill in?</strong>
 
 				        		</div>
 					      	</div>
