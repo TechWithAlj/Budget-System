@@ -1138,6 +1138,10 @@ class Production extends CI_Controller {
 					$where = 'a.service_group_id = 13'; //UTILITIES VARIABLE
 				} else if($component_type_id == 31){
 					$where = 'a.service_group_id = 14'; //LABOR VARIABLE
+				} else if($component_type_id == 32){
+					$where = 'a.service_group_id = 15'; //BLAST FREEZING
+				} else if($component_type_id == 33){
+					$where = 'a.service_group_id = 16'; //COLD STORAGE
 				}
 				$services = $this->admin->get_data('services_tbl a', $where);
 				
