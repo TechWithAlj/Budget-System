@@ -1038,7 +1038,7 @@ class Dashboard extends CI_Controller {
 
 			, 0)as total_sales_mix2
 			', false, $having, false);
-		return $sales_mix;
+		// return $sales_mix;
 		
 
 		foreach($sales_mix as $row){
