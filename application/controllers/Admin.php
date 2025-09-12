@@ -24776,6 +24776,61 @@ class Admin extends CI_Controller {
 		$info = $this->_require_login();
 
 		
+		$get_depreciation = $this->admin->get_query("
+
+			SELECT
+			n.gl_sub_name,
+			n.gl_code,
+			'DEPRECIATION(OLD)' AS depreciation_type,
+			o.cost_center_code,
+			o.cost_center_desc,
+			'" . $year . "' AS gl_year,
+			1 AS amount,
+			q.cost_center_type_name,
+			b.brand,
+			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 1 THEN d.depreciation_bc_amount ELSE 0 END) AS jan,
+			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 2 THEN d.depreciation_bc_amount ELSE 0 END) AS feb,
+			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 3 THEN d.depreciation_bc_amount ELSE 0 END) AS mar,
+			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 4 THEN d.depreciation_bc_amount ELSE 0 END) AS apr,
+			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 5 THEN d.depreciation_bc_amount ELSE 0 END) AS may,
+			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 6 THEN d.depreciation_bc_amount ELSE 0 END) AS jun,
+			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 7 THEN d.depreciation_bc_amount ELSE 0 END) AS jul,
+			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 8 THEN d.depreciation_bc_amount ELSE 0 END) AS aug,
+			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 9 THEN d.depreciation_bc_amount ELSE 0 END) AS sep,
+			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 10 THEN d.depreciation_bc_amount ELSE 0 END) AS oct,
+			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 11 THEN d.depreciation_bc_amount ELSE 0 END) AS nov,
+			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 12 THEN d.depreciation_bc_amount ELSE 0 END) AS december,
+			ccg.cost_center_group_name
+			FROM
+			depreciation_bc_tbl d
+			INNER JOIN gl_subgroup_tbl n ON d.gl_sub_id = n.gl_sub_id
+			INNER JOIN cost_center_tbl o ON d.cost_center_id = o.cost_center_id
+			INNER JOIN asset_group_tbl p ON n.gl_code = p.ag_gl_code
+			INNER JOIN cost_center_type_tbl q ON o.cost_center_type_id = q.cost_center_type_id
+			LEFT JOIN (
+				SELECT x.ifs_code, z.brand_name as brand
+				FROM outlet_tbl x
+				JOIN outlet_brand_tbl y ON x.outlet_id = y.outlet_id AND y.outlet_brand_status = 1
+				JOIN brand_tbl z ON y.brand_id = z.brand_id
+			) b ON o.cost_center_code = b.ifs_code
+			LEFT JOIN cost_center_group_tbl ccg ON o.cost_center_group_id = ccg.cost_center_group_id
+			WHERE
+			d.depreciation_bc_status = 1
+			AND YEAR(d.depreciation_bc_date) = '" . $year . "'
+			AND d.bc_id = " . $bc_id . "
+			GROUP BY
+			o.cost_center_id, n.gl_sub_id
+
+
+		");
+
+		return $get_depreciation;
+	}
+	
+	public function get_depreciation_monthly2_old($cost_center, $year, $bc_id){
+		$info = $this->_require_login();
+
+		
 		$get_depreciation = $this->admin->get_query('
 
 			SELECT n.gl_sub_name, n.gl_code, "DEPRECIATION(OLD)", o.cost_center_code, o.cost_center_desc, "' . $year . '" as gl_year, 1 as amount, q.cost_center_type_name,

@@ -1106,7 +1106,7 @@ class Dashboard extends CI_Controller {
  		$old_emp_data = 0;
  		$new_emp_data = 0;
 
- 		$get_manpower = $this->admin->get_join('manpower_tbl a', $join_manpower, TRUE, FALSE, FALSE, 'SUM(manpower_old) as emp_old, SUM(manpower_new) as emp_new');
+ 		$get_manpower = $this->admin->get_join('manpower_tbl a', $join_manpower, TRUE, FALSE, FALSE, 'SUM(manpower_old) as emp_old, SUM(manpower_new) as emp_new', FALSE, FALSE, FALSE);
  		$old_emp_data = check_num($get_manpower->emp_old);
  		$new_emp_data = check_num($get_manpower->emp_new);
 
@@ -1123,7 +1123,7 @@ class Dashboard extends CI_Controller {
  			'dashboard_bc_manpower_status' => 1
  		);
 
- 		$insert_emp = $this->admin->insert_data('dashboard_bc_manpower_tbl', $set_emp);
+ 		// $insert_emp = $this->admin->insert_data('dashboard_bc_manpower_tbl', $set_emp);
 	}
 
 	public function employee_pdf_data($trans_id, $bc_id, $year){
