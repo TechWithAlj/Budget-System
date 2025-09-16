@@ -1123,7 +1123,7 @@ class Dashboard extends CI_Controller {
  			'dashboard_bc_manpower_status' => 1
  		);
 
- 		// $insert_emp = $this->admin->insert_data('dashboard_bc_manpower_tbl', $set_emp);
+ 		$insert_emp = $this->admin->insert_data('dashboard_bc_manpower_tbl', $set_emp);
 	}
 
 	public function employee_pdf_data($trans_id, $bc_id, $year){

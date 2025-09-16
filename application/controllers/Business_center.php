@@ -21004,7 +21004,7 @@ class Business_center extends CI_Controller {
 			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 10 THEN d.depreciation_bc_amount ELSE 0 END) AS oct,
 			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 11 THEN d.depreciation_bc_amount ELSE 0 END) AS nov,
 			SUM(CASE WHEN MONTH(d.depreciation_bc_date) = 12 THEN d.depreciation_bc_amount ELSE 0 END) AS december,
-			ccg.cost_center_group_name
+			ccg.cost_center_group_name as cost_center_group
 			FROM
 			depreciation_bc_tbl d
 			INNER JOIN gl_subgroup_tbl n ON d.gl_sub_id = n.gl_sub_id
