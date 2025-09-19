@@ -26146,6 +26146,7 @@ class Business_center extends CI_Controller {
 			$year = clean_data($this->input->post('year'));
 			$rank = decode(clean_data($this->input->post('rank')));
 			$position = clean_data($this->input->post('position'));
+			$remarks = strtoupper(clean_data($this->input->post('remarks')));
 
 			if(!empty($cost_center) && !empty($year) && !empty($rank) && !empty($position)){
 
@@ -26162,7 +26163,8 @@ class Business_center extends CI_Controller {
 							'manpower_old' => $old,
 							'manpower_new' => $new,
 							'manpower_added' => date_now(),
-							'manpower_status' => 1
+							'manpower_status' => 1,
+							'manpower_remarks' => $remarks
 						);
 						$result = $this->admin->insert_data('manpower_tbl', $set);
 						
@@ -26209,6 +26211,7 @@ class Business_center extends CI_Controller {
 				$manpower_old = $check_manpower['info']->manpower_old;
 				$manpower_new = $check_manpower['info']->manpower_new;
 				$rank_id = $check_manpower['info']->rank_id;
+				$remarks = $check_manpower['info']->manpower_remarks;
 
 				$get_rank = $this->admin->get_data('rank_tbl', array('rank_status' => 1));
 				$rank_data = '<option value="">Select Rank...</option>';
@@ -26228,7 +26231,8 @@ class Business_center extends CI_Controller {
 					'manpower_position' => $manpower_position,
 					'manpower_old' => $manpower_old,
 					'manpower_new' => $manpower_new,
-					'rank' => $rank_data
+					'rank' => $rank_data,
+					'manpower_remarks' => $remarks
 				);
 
 				
@@ -26250,6 +26254,7 @@ class Business_center extends CI_Controller {
 			$old = clean_data($this->input->post('old'));
 			$new = clean_data($this->input->post('new'));
 			$position = clean_data($this->input->post('position'));
+			$remarks = strtoupper(clean_data($this->input->post('remarks')));
 
 			if(!empty($id) && !empty($rank) && !empty($position)){
 				$check_manpower = $this->admin->check_data('manpower_tbl', array('manpower_id' => $id, 'manpower_status' => 1));
@@ -26259,7 +26264,8 @@ class Business_center extends CI_Controller {
 						'rank_id' => $rank,
 						'manpower_position' => $position,
 						'manpower_old' => $old,
-						'manpower_new' => $new
+						'manpower_new' => $new,
+						'manpower_remarks' => $remarks,
 					);
 					$where = array('manpower_id' => $id);
 					$result = $this->admin->update_data('manpower_tbl', $set, $where);

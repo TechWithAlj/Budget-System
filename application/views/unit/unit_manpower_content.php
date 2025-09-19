@@ -82,6 +82,10 @@
 									        			<label>BC New Manpower</label>
 									        			<input type="text" class="form-control input-sm" name="bc-new">
 									        		</div>
+													<div class="form-group">
+														<label>Remarks</label>
+														<textarea class="form-control input-sm" name="remarks" rows="3"></textarea>
+													</div>
 
 									        		<div class="btn-update">
 									        			<button type="submit" class="btn btn-info btn-sm pull-right">Add</button><br>
@@ -145,6 +149,7 @@
 							<th>BC Old</th>
 							<th>BC New</th>
 							<th>Year</th>
+							<th>Remarks</th>
 							<th>Action</th>
 						</tr>
 					</thead>
@@ -165,6 +170,7 @@
 							<td><?=$row->manpower_bc_old?></td>
 							<td><?=$row->manpower_bc_new?></td>
 							<td><?=$row->manpower_year?></td>
+							<td><?=$row->manpower_remarks?></td>
 							<td><a href="" class="btn btn-success btn-xs edit-manpower" data-id="<?=encode($row->manpower_id)?>">View</a>&nbsp;&nbsp;<a href="" class="btn btn-danger btn-xs remove-manpower" data-id="<?=encode($row->manpower_id)?>">Cancel</a>&nbsp;&nbsp;</td>
 						</tr>
 
@@ -218,6 +224,11 @@
 					        		<div class="form-group">
 					        			<label>BC New Manpower</label>
 					        			<input type="text" class="form-control input-sm" name="bc-new" id="edit-manpower-bc-new">
+					        		</div>
+
+									<div class="form-group">
+					        			<label>Remarks</label>
+					        			<textarea class="form-control input-sm" name="remarks" id="edit-manpower-remarks" rows="3"></textarea>
 					        		</div>
 
 					        		<div class="btn-update">

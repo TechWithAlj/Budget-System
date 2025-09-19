@@ -26151,7 +26151,7 @@ class Admin extends CI_Controller {
 			$year = clean_data($this->input->post('year'));
 			$rank = decode(clean_data($this->input->post('rank')));
 			$position = clean_data($this->input->post('position'));
-			$remarks = clean_data($this->input->post('remarks'));
+			$remarks = strtoupper(clean_data($this->input->post('remarks')));
 			$bc_old = clean_data($this->input->post('bc-old'));
 			$bc_new = clean_data($this->input->post('bc-new'));
 
@@ -26269,7 +26269,7 @@ class Admin extends CI_Controller {
 			$bc_old = clean_data($this->input->post('bc-old'));
 			$bc_new = clean_data($this->input->post('bc-new'));
 			$position = clean_data($this->input->post('position'));
-			$remarks = clean_data($this->input->post('remarks'));
+			$remarks = strtoupper(clean_data($this->input->post('remarks')));
 
 			if(!empty($id) && !empty($old) && !empty($rank) && !empty($position)){
 				$check_manpower = $this->admin->check_data('manpower_tbl', array('manpower_id' => $id, 'manpower_status' => 1));

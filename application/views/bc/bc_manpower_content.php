@@ -74,6 +74,10 @@
 								        			<label>New Manpower</label>
 								        			<input type="text" class="form-control input-sm" name="new">
 								        		</div>
+												<div class="form-group">
+								        			<label>Remarks</label>
+								        			<textarea class="form-control input-sm" name="remarks" rows="3"></textarea>
+								        		</div>
 
 								        		<div class="btn-update">
 								        			<button type="submit" class="btn btn-info btn-sm pull-right">Add</button><br>
@@ -135,6 +139,7 @@
 							<th>Old</th>
 							<th>New</th>
 							<th>Year</th>
+							<th>Remarks</th>
 							<th>Action</th>
 						</tr>
 					</thead>
@@ -154,6 +159,7 @@
 							<td><?=$row->manpower_old?></td>
 							<td><?=$row->manpower_new?></td>
 							<td><?=$row->manpower_year?></td>
+							<td><?=$row->manpower_remarks?></td>
 							<td>
 								<?php if($budget_status == 1):?>
 									
@@ -204,6 +210,10 @@
 					        		<div class="form-group">
 					        			<label>New Manpower</label>
 					        			<input type="text" class="form-control input-sm" name="new" id="edit-manpower-new">
+					        		</div>
+									<div class="form-group">
+					        			<label>Remarks</label>
+					        			<textarea class="form-control input-sm" name="remarks" id="edit-manpower-remarks" rows="3"></textarea>
 					        		</div>
 
 					        		<div class="btn-update">

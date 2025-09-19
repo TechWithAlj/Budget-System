@@ -1896,6 +1896,7 @@ $(document).ready(function () {
 					var manpower_bc_old = parse_response["info"]["manpower_bc_old"];
 					var manpower_bc_new = parse_response["info"]["manpower_bc_new"];
 					var rank = parse_response["info"]["rank"];
+					var manpower_remarks = parse_response["info"]["manpower_remarks"];
 
 					$("#update-manpower").find("#id").val(id);
 
@@ -1920,6 +1921,10 @@ $(document).ready(function () {
 					$("#update-manpower")
 						.find("#edit-manpower-position")
 						.val(manpower_position);
+
+					$("#update-manpower")
+						.find("#edit-manpower-remarks")
+						.val(manpower_remarks);
 
 					$("#modal-edit-manpower").modal({ show: true });
 				} else {
