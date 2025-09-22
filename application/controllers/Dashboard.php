@@ -26793,6 +26793,7 @@ class Dashboard extends CI_Controller {
 				ini_set('memory_limit','4048M');
 				
 				$this->load->library("Pdf");
+				ob_start();
 					  
 			    // create new PDF document
 			    $pdf = new TCPDF('P', PDF_UNIT, 'A4', true, 'UTF-8', false);
@@ -27001,6 +27002,7 @@ class Dashboard extends CI_Controller {
 			}
 
 			$pdf->Output('BAVI Budgeting ' . $year .' - ' . date('Y/m/d'). '.pdf', 'I');
+			ob_end_flush();
 			exit;
 		}
 	}
