@@ -26489,7 +26489,8 @@ class Dashboard extends CI_Controller {
 		//$info = $this->_require_login();
 
 		$unit_name = clean_data($unit_name);
-		$unit_name = str_replace('-', ' ', $unit_name);
+		// $unit_name = str_replace('-', ' ', $unit_name);
+		$unit_name = str_replace('~', ' ', $unit_name);
 		$unit_name = str_replace('_', '/', $unit_name);
 		$unit_name = str_replace('.', '&', $unit_name);
 
