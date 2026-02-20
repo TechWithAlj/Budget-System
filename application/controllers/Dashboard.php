@@ -29547,6 +29547,10 @@ class Dashboard extends CI_Controller {
 	public function download_opex($type, $id, $year){
 		$info = $this->_require_login();
 
+		ini_set('display_errors', 1);
+		ini_set('display_startup_errors', 1);
+		error_reporting(E_ALL);
+
 		$trans_id = decode($id);
 		$get_details = $this->get_trans_bc($trans_id);
 		$cost_center_id = $get_details['cost_center_id'];
@@ -29576,6 +29580,9 @@ class Dashboard extends CI_Controller {
 
 		$get_depreciation = $this->get_depreciation_monthly($cost_center_id, $year, $bc_id);
 		$get_depreciation2 = $this->get_depreciation_monthly2($cost_center_id, $year, $bc_id);
+
+		
+		
 
 		$this->load->library('excel');
 
@@ -29962,7 +29969,16 @@ class Dashboard extends CI_Controller {
 			$spreadsheet->getActiveSheet()->getColumnDimension($columnID)
 					->setAutoSize(true);
 		}
+		
 
+		$error = error_get_last();
+		if ($error !== null) {
+			echo "Error Type: " . $error['type'] . "<br>";
+			echo "Error Message: " . $error['message'] . "<br>";
+			echo "File: " . $error['file'] . "<br>";
+			echo "Line: " . $error['line'] . "<br>";
+		}
+		//exit;
 		$spreadsheet->getActiveSheet()->getStyle('J2:V' . ($x - 1))->getNumberFormat()->setFormatCode('#,##0.00');
 		
 		// Rename worksheet
@@ -29976,6 +29992,7 @@ class Dashboard extends CI_Controller {
 
 		// Redirect output to a client’s web browser (Excel2007)
 		header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+		
 		$random = generate_random(5);
 		header('Content-Disposition: attachment;filename="Budgeting - ' . $bc_name . ' OPEX ' . $year . '_' . $random . '.xlsx"');
 		header('Cache-Control: max-age=0');
@@ -29988,6 +30005,7 @@ class Dashboard extends CI_Controller {
 		header('Cache-Control: cache, must-revalidate'); // HTTP/1.1
 		header('Pragma: public'); // HTTP/1.0
 
+		if (ob_get_length()) ob_end_clean();
 		$writer = PHPExcel_IOFactory::createWriter($spreadsheet, 'Excel2007');
 		$writer->save('php://output');
 		exit;
